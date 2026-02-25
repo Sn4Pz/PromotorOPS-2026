@@ -80,9 +80,16 @@ export function extractItemIdFromUrl(url: string): string | null {
   return match?.[1] ?? null
 }
 
-// Transition name patterns to match against (case-insensitive)
-const CHECK_IN_NAMES  = ['check in', 'checkin', 'check-in', 'checked in', 'return', 'returned']
-const CHECK_OUT_NAMES = ['check out', 'checkout', 'check-out', 'checked out', 'take', 'borrow']
+// Transition name patterns to match against (case-insensitive).
+// Includes Romanian terms used in the Promotor Jira workflow.
+const CHECK_IN_NAMES  = [
+  'check in', 'checkin', 'check-in', 'checked in', 'return', 'returned',
+  'incepere constatare', 'incepe constatare', 'constatare',
+]
+const CHECK_OUT_NAMES = [
+  'check out', 'checkout', 'check-out', 'checked out', 'take', 'borrow',
+  'finalizare constatare', 'finalizeaza', 'inchidere',
+]
 
 function matchesCheckIn(name: string)  { return CHECK_IN_NAMES.some(n  => name.toLowerCase().includes(n)) }
 function matchesCheckOut(name: string) { return CHECK_OUT_NAMES.some(n => name.toLowerCase().includes(n)) }
@@ -145,33 +152,50 @@ export async function transitionIssue(
   issueId: string,
   action: 'checkin' | 'checkout'
 ): Promise<{ usedId: string; usedName: string }> {
-  const available = await getAvailableTransitions(issueId)
+  const fallbackId = action === 'checkin' ? '21' : '201'
 
-  let target: JiraTransition | undefined
+  // Try to resolve the transition ID by name from the available list.
+  // If this pre-flight call fails for any reason, we fall back to the
+  // hardcoded ID immediately — no error is thrown from here.
+  let resolvedId   = fallbackId
+  let resolvedName = `id:${fallbackId}`
 
-  if (action === 'checkin') {
-    target = available.find(t => matchesCheckIn(t.name))
-  } else {
-    target = available.find(t => matchesCheckOut(t.name))
+  try {
+    const available = await getAvailableTransitions(issueId)
+
+    const byName = action === 'checkin'
+      ? available.find(t => matchesCheckIn(t.name))
+      : available.find(t => matchesCheckOut(t.name))
+
+    const byId = available.find(t => t.id === fallbackId)
+
+    const target = byName ?? byId
+
+    if (target) {
+      resolvedId   = target.id
+      resolvedName = target.name
+    } else if (available.length > 0) {
+      // No match found — report what IS available so the user can diagnose
+      const names = available.map(t => `"${t.name}" (id:${t.id})`).join(', ')
+      throw new Error(
+        `No "${action}" transition available from current state.\n` +
+        `Available: ${names}`
+      )
+    }
+    // If available is empty the pre-flight may have returned nothing valid;
+    // fall through to hardcoded ID attempt below.
+  } catch (preflightErr) {
+    // Re-throw only if it's our own descriptive error (no available transitions).
+    // For network/auth errors on the pre-flight, silently fall back to hardcoded ID.
+    if (preflightErr instanceof Error && preflightErr.message.startsWith('No "')) {
+      throw preflightErr
+    }
   }
 
-  // Fallback to hardcoded IDs if name matching finds nothing
-  if (!target) {
-    const fallbackId = action === 'checkin' ? '21' : '201'
-    target = available.find(t => t.id === fallbackId)
-  }
-
-  if (!target) {
-    const names = available.map(t => `"${t.name}" (id:${t.id})`).join(', ')
-    throw new Error(
-      `No matching transition found for ${action}.\n` +
-      `Available transitions: ${names || 'none'}.`
-    )
-  }
-
+  // Execute the transition
   await adminClient.post(`/rest/api/2/issue/${issueId}/transitions`, {
-    transition: { id: target.id },
+    transition: { id: resolvedId },
   })
 
-  return { usedId: target.id, usedName: target.name }
+  return { usedId: resolvedId, usedName: resolvedName }
 }
