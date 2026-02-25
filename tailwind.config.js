@@ -22,8 +22,10 @@ export default {
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         scanline: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(248px)' },
+          '0%':   { transform: 'translateY(-4px)',  opacity: '0' },
+          '4%':   { transform: 'translateY(8px)',   opacity: '1' },
+          '96%':  { transform: 'translateY(248px)', opacity: '1' },
+          '100%': { transform: 'translateY(260px)', opacity: '0' },
         },
       },
       animation: {

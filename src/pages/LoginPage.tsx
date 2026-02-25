@@ -125,9 +125,9 @@ export default function LoginPage({ onLoginSuccess }: Props) {
 
   function PinDots() {
     return (
-      <div className={`flex gap-4 mb-3 ${shaking ? 'animate-shake' : ''}`}>
+      <div className={`flex gap-5 mb-3 ${shaking ? 'animate-shake' : ''}`}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
+          <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all duration-150 ${
             i < pin.length ? 'bg-brand-400 border-brand-400 scale-110' : 'bg-transparent border-slate-500'
           }`} />
         ))}
@@ -137,18 +137,18 @@ export default function LoginPage({ onLoginSuccess }: Props) {
 
   function Numpad() {
     return (
-      <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
+      <div className="grid grid-cols-3 gap-4 w-full max-w-xs">
         {numpadDigits.map((d, i) => {
           if (d === '') return <div key={i} />
           if (d === '⌫') return (
             <button key={i} onClick={handleDelete}
-              className="flex items-center justify-center h-16 rounded-2xl bg-slate-700 active:bg-slate-600 text-2xl font-semibold text-slate-300 transition-colors">
+              className="flex items-center justify-center h-20 rounded-2xl bg-slate-700 active:bg-slate-600 text-3xl font-semibold text-slate-300 transition-colors">
               {d}
             </button>
           )
           return (
             <button key={i} onClick={() => handleDigit(d)}
-              className="flex items-center justify-center h-16 rounded-2xl bg-slate-700 active:bg-brand-600 text-2xl font-semibold text-white transition-colors">
+              className="flex items-center justify-center h-20 rounded-2xl bg-slate-700 active:bg-brand-600 text-3xl font-bold text-white transition-colors">
               {d}
             </button>
           )
@@ -160,24 +160,24 @@ export default function LoginPage({ onLoginSuccess }: Props) {
   // ── Step: Jira credentials ───────────────────────────────────────────────
   if (step === 'jira') {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6">
-        <div className="w-full max-w-xs">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <img
-              src="/favicon.png"
-              alt="ProMotor"
-              className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl object-contain"
-            />
-            <h1 className="font-display font-extrabold text-4xl tracking-tight text-white">
-              Promotor OPS
-            </h1>
-            <p className="text-slate-400 text-sm mt-2">Sign in with your Jira account</p>
-          </div>
+      <div className="flex flex-col h-full pt-safe-top pb-safe-bottom">
+        {/* Branding — 38% of screen height */}
+        <div className="flex flex-col items-center justify-end pb-6 px-6 text-center"
+          style={{ flex: '2' }}>
+          <img src="/favicon.png" alt="Promotor"
+            className="w-32 h-32 mb-6 rounded-3xl shadow-xl object-contain" />
+          <h1 className="font-display font-extrabold text-5xl tracking-tight text-white">
+            Promotor OPS
+          </h1>
+          <p className="text-slate-400 text-base mt-3">Sign in with your Jira account</p>
+        </div>
 
-          <form onSubmit={handleJiraLogin} className="space-y-3">
+        {/* Form — 62% of screen height */}
+        <div className="flex flex-col items-center justify-center px-6"
+          style={{ flex: '3' }}>
+          <form onSubmit={handleJiraLogin} className="space-y-5 w-full max-w-xs">
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-sm text-slate-400 mb-2 uppercase tracking-wider font-medium">
                 Jira Username
               </label>
               <input
@@ -189,11 +189,11 @@ export default function LoginPage({ onLoginSuccess }: Props) {
                 onChange={(e) => { setUsername(e.target.value); setJiraError('') }}
                 disabled={jiraLoading}
                 placeholder="your.name"
-                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 disabled:opacity-50 text-base"
+                className="w-full bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 disabled:opacity-50 text-lg"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-sm text-slate-400 mb-2 uppercase tracking-wider font-medium">
                 Password
               </label>
               <input
@@ -203,22 +203,20 @@ export default function LoginPage({ onLoginSuccess }: Props) {
                 onChange={(e) => { setPassword(e.target.value); setJiraError('') }}
                 disabled={jiraLoading}
                 placeholder="••••••••"
-                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 disabled:opacity-50 text-base"
+                className="w-full bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 disabled:opacity-50 text-lg"
               />
             </div>
 
-            {jiraError && (
-              <p className="text-red-400 text-sm text-center">{jiraError}</p>
-            )}
+            {jiraError && <p className="text-red-400 text-base text-center">{jiraError}</p>}
 
             <button
               type="submit"
               disabled={jiraLoading || !username.trim() || !password}
-              className="w-full py-3.5 rounded-xl bg-brand-600 active:bg-brand-500 disabled:opacity-40 text-white font-semibold text-base transition-colors mt-2"
+              className="w-full py-4 rounded-2xl bg-brand-600 active:bg-brand-500 disabled:opacity-40 text-white font-semibold text-lg transition-colors"
             >
               {jiraLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Verifying…
                 </span>
               ) : 'Sign In'}
@@ -229,79 +227,77 @@ export default function LoginPage({ onLoginSuccess }: Props) {
     )
   }
 
-  // ── Step: Set PIN (first time) ───────────────────────────────────────────
-  if (step === 'set-pin') {
-    return (
-      <div className="flex flex-col items-center justify-center h-full px-6 select-none">
-        <div className="text-center mb-8">
-          <p className="text-slate-400 text-sm">
-            Welcome, <span className="text-white font-semibold">{storedUser?.displayName}</span>
-          </p>
-          <h2 className="text-xl font-bold text-white mt-1">Set a 4-digit PIN</h2>
-          <p className="text-slate-400 text-sm mt-1">You'll use this PIN for future logins</p>
-        </div>
-        <PinDots />
-        <div className="h-5 mb-6">
-          {pinError && <p className="text-red-400 text-sm text-center">{pinError}</p>}
-        </div>
-        <Numpad />
-      </div>
-    )
+  // ── Shared PIN page shell ────────────────────────────────────────────────
+  // All three PIN steps use identical structure so the keypad never moves.
+  // • Top zone:    logo + title + fixed-height subtitle block (h-12)
+  // • Bottom zone: prompt + dots + fixed-height error row + numpad +
+  //                fixed-height link slot (invisible when unused)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const pinTopSubtitle =
+    step === 'set-pin'
+      ? <p className="text-slate-300 text-base font-semibold">
+          Welcome, <span className="text-white">{storedUser?.displayName}</span>
+        </p>
+      : step === 'confirm-pin'
+      ? <p className="text-slate-400 text-base">Confirm your PIN</p>
+      : <p className="text-slate-300 text-lg font-semibold">
+          {storedUser?.displayName ?? storedUser?.username}
+        </p>
+
+  const pinPrompt =
+    step === 'set-pin'     ? 'Set a 4-digit PIN for future logins'
+    : step === 'confirm-pin' ? 'Enter the same PIN again'
+    : 'Enter your PIN'
+
+  const pinLinkLabel =
+    step === 'confirm-pin' ? 'Start over'
+    : step === 'pin'       ? 'Sign in with a different account'
+    : null   // set-pin has no link
+
+  function handlePinLink() {
+    if (step === 'confirm-pin') { setStep('set-pin'); setPin(''); setFirstPin(''); setPinError('') }
+    else if (step === 'pin')    { setStep('jira'); setPin(''); setPinError('') }
   }
 
-  // ── Step: Confirm PIN ────────────────────────────────────────────────────
-  if (step === 'confirm-pin') {
-    return (
-      <div className="flex flex-col items-center justify-center h-full px-6 select-none">
-        <div className="text-center mb-8">
-          <h2 className="text-xl font-bold text-white">Confirm your PIN</h2>
-          <p className="text-slate-400 text-sm mt-1">Enter the same PIN again</p>
-        </div>
-        <PinDots />
-        <div className="h-5 mb-6">
-          {pinError && <p className="text-red-400 text-sm text-center">{pinError}</p>}
-        </div>
-        <Numpad />
-        <button
-          onClick={() => { setStep('set-pin'); setPin(''); setFirstPin(''); setPinError('') }}
-          className="mt-6 text-slate-400 text-sm underline"
-        >
-          Start over
-        </button>
-      </div>
-    )
-  }
-
-  // ── Step: PIN login (returning user) ────────────────────────────────────
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 select-none">
-      <div className="text-center mb-8">
-        <img
-          src="/favicon.png"
-          alt="ProMotor"
-          className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl object-contain"
-        />
+    <div className="flex flex-col h-full select-none pt-safe-top pb-safe-bottom">
+
+      {/* ── Top zone: branding (38%) ── */}
+      <div className="flex flex-col items-center justify-center px-6 text-center"
+        style={{ flex: '2' }}>
+        <img src="/favicon.png" alt="Promotor"
+          className="w-24 h-24 mb-5 rounded-3xl shadow-xl object-contain" />
         <h1 className="font-display font-extrabold text-4xl tracking-tight text-white">
           Promotor OPS
         </h1>
-        <p className="text-slate-300 text-sm mt-2 font-medium">
-          {storedUser?.displayName ?? storedUser?.username}
-        </p>
-        <p className="text-slate-400 text-xs mt-0.5">Enter your PIN</p>
+        {/* Fixed-height subtitle — prevents layout shift between steps */}
+        <div className="h-12 flex flex-col items-center justify-center mt-1">
+          {pinTopSubtitle}
+        </div>
       </div>
 
-      <PinDots />
-      <div className="h-5 mb-6">
-        {pinError && <p className="text-red-400 text-sm text-center">{pinError}</p>}
+      {/* ── Bottom zone: prompt + keypad (62%) ── */}
+      <div className="flex flex-col items-center justify-center px-6 gap-4 pb-12"
+        style={{ flex: '3' }}>
+        <p className="text-slate-400 text-base">{pinPrompt}</p>
+        <PinDots />
+        {/* Fixed-height error row — prevents keypad jump on error */}
+        <div className="h-5 flex items-center justify-center">
+          {pinError && <p className="text-red-400 text-base">{pinError}</p>}
+        </div>
+        <Numpad />
+        {/* Fixed-height link slot — invisible when unused so keypad stays put */}
+        <div className="h-10 flex items-center justify-center pt-6">
+          {pinLinkLabel && (
+            <button onClick={handlePinLink}
+              className="text-slate-500 text-base underline">
+              {pinLinkLabel}
+            </button>
+          )}
+        </div>
       </div>
-      <Numpad />
 
-      <button
-        onClick={() => { setStep('jira'); setPin(''); setPinError('') }}
-        className="mt-6 text-slate-400 text-sm underline"
-      >
-        Sign in with a different account
-      </button>
     </div>
   )
 }
