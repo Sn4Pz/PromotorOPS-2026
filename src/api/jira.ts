@@ -1,13 +1,15 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
 
 // ── Service account ────────────────────────────────────────────────────────
-// Used ONLY for workflow transitions (check-in / check-out).
-// Regular users do not have this permission in Jira, which forces them to
-// use this app and physically scan the equipment.
-const ADMIN_USER = 'andrei.buldus'
-const ADMIN_PASS = 'Coracoid2015'
+// Used ONLY for workflow transitions — mirrors the old Android app exactly.
+const ADMIN_USER  = 'andrei.buldus'
+const ADMIN_PASS  = 'Coracoid2015'
 const ADMIN_TOKEN = btoa(`${ADMIN_USER}:${ADMIN_PASS}`)
 
+const JIRA_BASE = 'https://jira.promotor.com'
+
+// In dev the Vite proxy rewrites /jira/* → https://jira.promotor.com/*
+// In production set VITE_JIRA_BASE_URL to the full origin.
 const BASE_URL = import.meta.env.VITE_JIRA_BASE_URL ?? '/jira'
 
 function makeClient(authToken: string): AxiosInstance {
@@ -22,31 +24,26 @@ function makeClient(authToken: string): AxiosInstance {
   })
 }
 
-// Admin client — transitions only
 const adminClient = makeClient(ADMIN_TOKEN)
 
 // ── Error helper ───────────────────────────────────────────────────────────
 
-/**
- * Extract a human-readable message from a Jira API error.
- * Jira returns errors as { errorMessages: string[], errors: {} }
- */
 export function extractJiraError(err: unknown): string {
   if (axios.isAxiosError(err)) {
-    const e = err as AxiosError<{ errorMessages?: string[]; errors?: Record<string, string>; message?: string }>
-    const status = e.response?.status
-    const data   = e.response?.data
-
+    const e    = err as AxiosError<{ errorMessages?: string[]; errors?: Record<string, string>; message?: string }>
+    const code = e.response?.status
+    const data = e.response?.data
     if (data) {
-      const msgs = data.errorMessages ?? []
-      const errs = data.errors ? Object.values(data.errors) : []
-      const combined = [...msgs, ...errs].filter(Boolean).join(' ')
-      if (combined) return `[${status}] ${combined}`
-      if (data.message) return `[${status}] ${data.message}`
+      const msgs = [
+        ...(data.errorMessages ?? []),
+        ...Object.values(data.errors ?? {}),
+      ].filter(Boolean)
+      if (msgs.length) return `[${code}] ${msgs.join(' ')}`
+      if (data.message) return `[${code}] ${data.message}`
     }
-    if (status === 403) return `[403] Permission denied — the service account may not have rights to perform this transition in the current issue state.`
-    if (status === 400) return `[400] Transition not valid — the issue may already be in this state.`
-    if (status === 404) return `[404] Issue or transition not found.`
+    if (code === 403) return '[403] Permission denied — the service account cannot perform this transition from the current state.'
+    if (code === 400) return '[400] Transition not valid — the issue may already be in this state.'
+    if (code === 404) return '[404] Issue or transition not found.'
     return e.message
   }
   return err instanceof Error ? err.message : String(err)
@@ -60,142 +57,168 @@ export interface JiraUser {
   emailAddress?: string
 }
 
-export interface AssetInfo {
-  jiraIssueId: string
-  summary?: string
-  status?: string
-  assignee?: string
+/** Raw link entry in the Asset Manager item response */
+export interface AssetLink {
+  issueId?:     number | string
+  issueKey?:    string
+  jiraIssueId?: string
+  key?:         string
 }
 
-export interface JiraTransition {
-  id: string
-  name: string
-  to: { name: string }
+/** Parsed result from the Asset Manager API — matches old app's AssetInfo */
+export interface AssetItem {
+  itemId:       string   // the numeric id in the QR URL
+  jiraIssueId:  string   // issue key like "PM-123"
+  name?:        string
+  objectType?:  string
+}
+
+/** Full Jira issue — from GET /rest/api/2/issue/{key} */
+export interface JiraIssue {
+  id:          string
+  key:         string
+  browseUrl:   string
+  summary:     string
+  status:      string
+  statusColor: string
+  issueType:   string
+  priority?:   string
+  assignee?:   string
+  reporter?:   string
+  description?: string
+  created:     string
+  updated:     string
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+/**
+ * Extract the numeric item ID from an Ephor Asset Manager QR URL.
+ * Matches the exact regex from the old Android app's UrlUtils.kt
+ * Example: https://jira.promotor.com/plugins/servlet/com.spartez.ephor/item/57860
+ */
 export function extractItemIdFromUrl(url: string): string | null {
-  const match = url.match(/\/item\/(\d+)$/)
+  const match = url.match(/.+\/item\/(\d+)$/)
   return match?.[1] ?? null
 }
 
-// Transition name patterns to match against (case-insensitive).
-// Includes Romanian terms used in the Promotor Jira workflow.
-const CHECK_IN_NAMES  = [
-  'check in', 'checkin', 'check-in', 'checked in', 'return', 'returned',
-  'incepere constatare', 'incepe constatare', 'constatare',
-]
-const CHECK_OUT_NAMES = [
-  'check out', 'checkout', 'check-out', 'checked out', 'take', 'borrow',
-  'finalizare constatare', 'finalizeaza', 'inchidere',
-]
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('ro-RO', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
 
-function matchesCheckIn(name: string)  { return CHECK_IN_NAMES.some(n  => name.toLowerCase().includes(n)) }
-function matchesCheckOut(name: string) { return CHECK_OUT_NAMES.some(n => name.toLowerCase().includes(n)) }
-
-// ── User auth ──────────────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────────────────
 
 export async function validateJiraCredentials(
   username: string,
   password: string
 ): Promise<JiraUser> {
-  const token  = btoa(`${username}:${password}`)
-  const client = makeClient(token)
+  const client = makeClient(btoa(`${username}:${password}`))
   const { data } = await client.get<JiraUser>('/rest/api/2/myself')
   return data
 }
 
-// ── Asset info ─────────────────────────────────────────────────────────────
+// ── Asset Manager API (identical to old app) ───────────────────────────────
 
-export async function getAssetInfo(
+/**
+ * GET /rest/com-spartez-ephor/1.0/item/{itemId}
+ *
+ * Exact same endpoint as the old Android app.
+ * Parses the jiraIssueId from the `links` array in the response
+ * (the old app's AssetInfo.jiraIssueId field).
+ */
+export async function getAssetItem(
   itemId: string,
   userToken: string
-): Promise<AssetInfo> {
+): Promise<AssetItem> {
   const client = makeClient(userToken)
-  const { data } = await client.get(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await client.get<any>(
     `/rest/com-spartez-ephor/1.0/item/${itemId}`
   )
+
+  // The API response contains a `links` array with the linked Jira issues.
+  // We pick the first link's issue key — same as the old app's jiraIssueId field.
+  let jiraIssueId: string | undefined
+
+  // Try direct fields first (old app serialised as jiraIssueId at root)
+  jiraIssueId = data.jiraIssueId ?? data.issueKey ?? data.key
+
+  // Then scan the links array
+  if (!jiraIssueId && Array.isArray(data.links)) {
+    const link: AssetLink = data.links[0] ?? {}
+    jiraIssueId = link.issueKey ?? link.jiraIssueId ?? link.key
+      ?? (link.issueId ? String(link.issueId) : undefined)
+  }
+
+  if (!jiraIssueId) {
+    throw new Error(
+      'Asset Manager response did not contain a linked Jira issue.\n' +
+      `Raw response keys: ${Object.keys(data).join(', ')}`
+    )
+  }
+
   return {
-    jiraIssueId: data.jiraIssueId ?? data.issueKey ?? data.key ?? String(data.id),
-    summary:     data.summary ?? data.name,
-    status:      data.status?.name ?? data.status,
-    assignee:    data.assignee?.displayName ?? data.assignee,
+    itemId,
+    jiraIssueId,
+    name:       data.name ?? data.summary,
+    objectType: data.objectType?.name ?? data.objectTypeName,
   }
 }
 
-// ── Available transitions ──────────────────────────────────────────────────
+// ── Jira Issue API ─────────────────────────────────────────────────────────
 
 /**
- * Fetch all transitions currently available for this issue (admin account).
+ * GET /rest/api/2/issue/{issueKey}
+ *
+ * Fetches full issue details for the viewing page.
+ * Uses the logged-in user's credentials (reads are audited under their account).
  */
-export async function getAvailableTransitions(issueId: string): Promise<JiraTransition[]> {
-  const { data } = await adminClient.get(
-    `/rest/api/2/issue/${issueId}/transitions`
-  )
-  return (data.transitions ?? []) as JiraTransition[]
+export async function getIssueDetails(
+  issueKey: string,
+  userToken: string
+): Promise<JiraIssue> {
+  const client = makeClient(userToken)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await client.get<any>(`/rest/api/2/issue/${issueKey}`)
+
+  const f = data.fields ?? {}
+  return {
+    id:          data.id,
+    key:         data.key,
+    browseUrl:   `${JIRA_BASE}/browse/${data.key}`,
+    summary:     f.summary ?? '(no summary)',
+    status:      f.status?.name ?? '—',
+    statusColor: f.status?.statusCategory?.colorName ?? 'default',
+    issueType:   f.issuetype?.name ?? '—',
+    priority:    f.priority?.name,
+    assignee:    f.assignee?.displayName,
+    reporter:    f.reporter?.displayName,
+    description: typeof f.description === 'string' ? f.description : undefined,
+    created:     formatDate(f.created),
+    updated:     formatDate(f.updated),
+  }
 }
 
-// ── Transitions ────────────────────────────────────────────────────────────
+// ── Transitions (identical to old app) ────────────────────────────────────
 
 /**
- * Trigger a workflow transition using the admin service account.
+ * POST /rest/api/2/issue/{issueId}/transitions
  *
- * Resolution order:
- *   1. Look for a transition whose name matches the action (check-in / check-out)
- *   2. Fall back to the hardcoded ID ("21" check-in, "201" check-out)
- *
- * This makes the app resilient to workflow reconfiguration and avoids
- * hardcoded-ID mismatches being the cause of 403 / 400 errors.
+ * Exact same call as the old Android app's JiraApi.transitionIssue().
+ * Uses the admin service account. Transition IDs: 21 = check-in, 201 = check-out.
  */
 export async function transitionIssue(
   issueId: string,
-  action: 'checkin' | 'checkout'
-): Promise<{ usedId: string; usedName: string }> {
-  const fallbackId = action === 'checkin' ? '21' : '201'
-
-  // Try to resolve the transition ID by name from the available list.
-  // If this pre-flight call fails for any reason, we fall back to the
-  // hardcoded ID immediately — no error is thrown from here.
-  let resolvedId   = fallbackId
-  let resolvedName = `id:${fallbackId}`
-
-  try {
-    const available = await getAvailableTransitions(issueId)
-
-    const byName = action === 'checkin'
-      ? available.find(t => matchesCheckIn(t.name))
-      : available.find(t => matchesCheckOut(t.name))
-
-    const byId = available.find(t => t.id === fallbackId)
-
-    const target = byName ?? byId
-
-    if (target) {
-      resolvedId   = target.id
-      resolvedName = target.name
-    } else if (available.length > 0) {
-      // No match found — report what IS available so the user can diagnose
-      const names = available.map(t => `"${t.name}" (id:${t.id})`).join(', ')
-      throw new Error(
-        `No "${action}" transition available from current state.\n` +
-        `Available: ${names}`
-      )
-    }
-    // If available is empty the pre-flight may have returned nothing valid;
-    // fall through to hardcoded ID attempt below.
-  } catch (preflightErr) {
-    // Re-throw only if it's our own descriptive error (no available transitions).
-    // For network/auth errors on the pre-flight, silently fall back to hardcoded ID.
-    if (preflightErr instanceof Error && preflightErr.message.startsWith('No "')) {
-      throw preflightErr
-    }
-  }
-
-  // Execute the transition
+  transitionId: '21' | '201'
+): Promise<void> {
   await adminClient.post(`/rest/api/2/issue/${issueId}/transitions`, {
-    transition: { id: resolvedId },
+    transition: { id: transitionId },
   })
-
-  return { usedId: resolvedId, usedName: resolvedName }
 }

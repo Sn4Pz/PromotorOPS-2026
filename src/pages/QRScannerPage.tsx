@@ -1,36 +1,34 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import jsQR from 'jsqr'
-import { getAssetInfo, extractItemIdFromUrl, AssetInfo } from '../api/jira'
+import { getAssetItem, getIssueDetails, extractItemIdFromUrl, JiraIssue } from '../api/jira'
 import { ScanMode, SCAN_MODE_LABELS, SCAN_MODE_COLORS } from '../types'
 
 interface Props {
   mode: ScanMode
   userToken: string
-  onAssetFound: (info: AssetInfo) => void
+  onIssueFound: (issue: JiraIssue) => void
   onError: (msg: string) => void
   onBack: () => void
 }
 
 type ScanState = 'requesting' | 'scanning' | 'loading' | 'error'
 
-export default function QRScannerPage({ mode, userToken, onAssetFound, onError, onBack }: Props) {
-  const videoRef     = useRef<HTMLVideoElement>(null)
-  const canvasRef    = useRef<HTMLCanvasElement>(null)
-  const streamRef    = useRef<MediaStream | null>(null)
-  const rafRef       = useRef<number>(0)
-  const handledRef   = useRef(false)
+export default function QRScannerPage({ mode, userToken, onIssueFound, onError, onBack }: Props) {
+  const videoRef   = useRef<HTMLVideoElement>(null)
+  const canvasRef  = useRef<HTMLCanvasElement>(null)
+  const streamRef  = useRef<MediaStream | null>(null)
+  const rafRef     = useRef<number>(0)
+  const handledRef = useRef(false)
 
   const [scanState, setScanState] = useState<ScanState>('requesting')
   const [statusMsg, setStatusMsg] = useState('Requesting camera access…')
 
-  // ── Camera teardown ────────────────────────────────────────────────────
   function stopCamera() {
     cancelAnimationFrame(rafRef.current)
-    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current?.getTracks().forEach(t => t.stop())
     streamRef.current = null
   }
 
-  // ── Frame scanning loop ────────────────────────────────────────────────
   const scanFrame = useCallback(async () => {
     const video  = videoRef.current
     const canvas = canvasRef.current
@@ -53,27 +51,31 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
     if (code?.data && !handledRef.current) {
       handledRef.current = true
       setScanState('loading')
-      setStatusMsg('QR detected — fetching asset info…')
+      setStatusMsg('QR detected — looking up asset…')
 
+      // Step 1: extract item ID from QR URL (same regex as old Android app)
       const itemId = extractItemIdFromUrl(code.data)
       if (!itemId) {
         const msg = 'Not a valid Asset Manager QR code.'
         setScanState('error')
         setStatusMsg(msg)
         onError(msg)
-        setTimeout(() => {
-          handledRef.current = false
-          setScanState('scanning')
-          setStatusMsg('Point camera at the QR code on the equipment')
-          rafRef.current = requestAnimationFrame(scanFrame)
-        }, 2000)
+        setTimeout(() => { handledRef.current = false; setScanState('scanning'); setStatusMsg('Point camera at the QR code on the equipment') }, 2500)
+        rafRef.current = requestAnimationFrame(scanFrame)
         return
       }
 
       try {
-        const info = await getAssetInfo(itemId, userToken)
+        // Step 2: GET /rest/com-spartez-ephor/1.0/item/{itemId} — same as old app
+        setStatusMsg('Fetching asset info…')
+        const asset = await getAssetItem(itemId, userToken)
+
+        // Step 3: GET /rest/api/2/issue/{jiraIssueId} — get full issue details
+        setStatusMsg(`Loading issue ${asset.jiraIssueId}…`)
+        const issue = await getIssueDetails(asset.jiraIssueId, userToken)
+
         stopCamera()
-        onAssetFound(info)
+        onIssueFound(issue)
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to fetch asset info.'
         setScanState('error')
@@ -84,7 +86,7 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
           setScanState('scanning')
           setStatusMsg('Point camera at the QR code on the equipment')
           rafRef.current = requestAnimationFrame(scanFrame)
-        }, 2500)
+        }, 3000)
       }
       return
     }
@@ -93,41 +95,27 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userToken])
 
-  // ── Camera start ───────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
 
     async function startCamera() {
       try {
-        // iOS Safari requires 'exact' facingMode or it defaults to front camera.
-        // We try 'environment' first, then fall back to any camera.
         let stream: MediaStream
         try {
           stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: { ideal: 'environment' },
-              width:  { ideal: 1280 },
-              height: { ideal: 720 },
-            },
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
             audio: false,
           })
         } catch {
-          // Fallback: any camera
           stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         }
-
-        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return }
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
 
         streamRef.current = stream
         const video = videoRef.current!
         video.srcObject = stream
-
-        // 'playsinline' is critical for iOS — without it the video goes
-        // full-screen and breaks the layout.
         video.setAttribute('playsinline', 'true')
-        video.setAttribute('muted', 'true')
         video.muted = true
-
         await video.play()
 
         setScanState('scanning')
@@ -138,18 +126,15 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
         const msg = err instanceof Error ? err.message : String(err)
         setScanState('error')
         setStatusMsg(
-          msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('denied')
-            ? 'Camera permission denied. Please allow camera access in your browser settings.'
+          msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('permission')
+            ? 'Camera permission denied. Allow camera access in browser settings.'
             : `Camera error: ${msg}`
         )
       }
     }
 
     startCamera()
-    return () => {
-      cancelled = true
-      stopCamera()
-    }
+    return () => { cancelled = true; stopCamera() }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -160,11 +145,9 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
     <div className="flex flex-col h-full bg-black">
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 px-4 pt-safe-top pt-4 pb-3 flex items-center gap-3"
-        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)' }}>
-        <button
-          onClick={() => { stopCamera(); onBack() }}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-black/40 backdrop-blur active:bg-black/60 transition-colors shrink-0"
-        >
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%)' }}>
+        <button onClick={() => { stopCamera(); onBack() }}
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-black/40 backdrop-blur active:bg-black/60 shrink-0">
           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -184,27 +167,16 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
         </div>
       </div>
 
-      {/* Full-screen camera feed */}
-      {/* Video is hidden — we render the canvas instead so we control the frame */}
-      <video
-        ref={videoRef}
-        className="hidden"
-        playsInline
-        muted
-        autoPlay
-      />
-      <canvas
-        ref={canvasRef}
-        className="flex-1 w-full object-cover"
-        style={{ display: scanState === 'requesting' || scanState === 'error' ? 'none' : 'block' }}
-      />
+      {/* Camera canvas */}
+      <video ref={videoRef} className="hidden" playsInline muted autoPlay />
+      <canvas ref={canvasRef} className="flex-1 w-full object-cover"
+        style={{ display: scanState === 'requesting' || scanState === 'error' ? 'none' : 'block' }} />
 
-      {/* Corner frame overlay */}
+      {/* Corner frame */}
       {(scanState === 'scanning' || scanState === 'loading') && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="relative w-64 h-64">
-            {[
-              'top-0 left-0 border-t-4 border-l-4 rounded-tl-xl',
+            {['top-0 left-0 border-t-4 border-l-4 rounded-tl-xl',
               'top-0 right-0 border-t-4 border-r-4 rounded-tr-xl',
               'bottom-0 left-0 border-b-4 border-l-4 rounded-bl-xl',
               'bottom-0 right-0 border-b-4 border-r-4 rounded-br-xl',
@@ -220,12 +192,14 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
 
       {/* Requesting / error placeholder */}
       {(scanState === 'requesting' || scanState === 'error') && (
-        <div className="flex-1 flex items-center justify-center bg-slate-900">
-          {scanState === 'requesting' && (
+        <div className="flex-1 flex items-center justify-center bg-slate-900 px-6">
+          {scanState === 'requesting' ? (
             <div className="flex flex-col items-center gap-3">
               <div className="w-12 h-12 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
               <p className="text-slate-300 text-sm">Requesting camera…</p>
             </div>
+          ) : (
+            <p className="text-red-400 text-sm text-center">{statusMsg}</p>
           )}
         </div>
       )}
@@ -234,20 +208,17 @@ export default function QRScannerPage({ mode, userToken, onAssetFound, onError, 
       {scanState === 'loading' && (
         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3 z-20">
           <div className="w-14 h-14 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-white text-sm font-medium">Fetching asset info…</p>
+          <p className="text-white text-sm font-medium text-center px-8">{statusMsg}</p>
         </div>
       )}
 
       {/* Status bar */}
-      <div className="absolute bottom-0 inset-x-0 z-10 px-4 py-3 pb-safe-bottom flex items-center justify-center min-h-[56px]"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)' }}>
-        <p className={`text-sm text-center font-medium ${
-          scanState === 'error' ? 'text-red-400' :
-          scanState === 'loading' ? 'text-yellow-300' : 'text-white/80'
-        }`}>
-          {statusMsg}
-        </p>
-      </div>
+      {scanState === 'scanning' && (
+        <div className="absolute bottom-0 inset-x-0 z-10 px-4 py-3 pb-safe-bottom flex items-center justify-center"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)' }}>
+          <p className="text-white/80 text-sm text-center font-medium">{statusMsg}</p>
+        </div>
+      )}
     </div>
   )
 }

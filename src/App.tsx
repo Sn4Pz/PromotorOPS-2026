@@ -4,22 +4,22 @@ import MainMenuPage from './pages/MainMenuPage'
 import QRScannerPage from './pages/QRScannerPage'
 import AssetInfoPage from './pages/AssetInfoPage'
 import Toast from './components/Toast'
-import { AssetInfo } from './api/jira'
+import { JiraIssue } from './api/jira'
 import { ScanMode } from './types'
 import { StoredUser, clearUser } from './auth/storage'
 
 type Screen = 'login' | 'menu' | 'scanner' | 'asset'
 
 export default function App() {
-  const [screen, setScreen]       = useState<Screen>('login')
-  const [user, setUser]           = useState<StoredUser | null>(null)
-  const [scanMode, setScanMode]   = useState<ScanMode>('view')
-  const [assetInfo, setAssetInfo] = useState<AssetInfo | null>(null)
-  const [toast, setToast]         = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [screen, setScreen]     = useState<Screen>('login')
+  const [user, setUser]         = useState<StoredUser | null>(null)
+  const [scanMode, setScanMode] = useState<ScanMode>('view')
+  const [issue, setIssue]       = useState<JiraIssue | null>(null)
+  const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   function showToast(message: string, type: 'success' | 'error') {
     setToast({ message, type })
-    setTimeout(() => setToast(null), 3500)
+    setTimeout(() => setToast(null), 4000)
   }
 
   function handleLoginSuccess(loggedInUser: StoredUser) {
@@ -33,10 +33,8 @@ export default function App() {
   }
 
   function handleLogout() {
-    // Clear the in-memory session but keep the stored PIN so they
-    // can log back in via PIN next time (unless they switch accounts).
     setUser(null)
-    setAssetInfo(null)
+    setIssue(null)
     setScreen('login')
     clearUser()
   }
@@ -59,8 +57,8 @@ export default function App() {
         <QRScannerPage
           mode={scanMode}
           userToken={user.jiraToken}
-          onAssetFound={(info) => {
-            setAssetInfo(info)
+          onIssueFound={(found) => {
+            setIssue(found)
             setScreen('asset')
           }}
           onError={(msg) => showToast(msg, 'error')}
@@ -68,9 +66,9 @@ export default function App() {
         />
       )}
 
-      {screen === 'asset' && assetInfo && user && (
+      {screen === 'asset' && issue && user && (
         <AssetInfoPage
-          assetInfo={assetInfo}
+          issue={issue}
           mode={scanMode}
           onActionComplete={(msg, type) => {
             showToast(msg, type)
@@ -81,11 +79,7 @@ export default function App() {
       )}
 
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onDismiss={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
     </div>
   )
