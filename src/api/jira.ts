@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios'
+import axios, { AxiosInstance, AxiosError } from 'axios'
 
 // ── Service account ────────────────────────────────────────────────────────
 // Used ONLY for workflow transitions (check-in / check-out).
@@ -25,6 +25,33 @@ function makeClient(authToken: string): AxiosInstance {
 // Admin client — transitions only
 const adminClient = makeClient(ADMIN_TOKEN)
 
+// ── Error helper ───────────────────────────────────────────────────────────
+
+/**
+ * Extract a human-readable message from a Jira API error.
+ * Jira returns errors as { errorMessages: string[], errors: {} }
+ */
+export function extractJiraError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const e = err as AxiosError<{ errorMessages?: string[]; errors?: Record<string, string>; message?: string }>
+    const status = e.response?.status
+    const data   = e.response?.data
+
+    if (data) {
+      const msgs = data.errorMessages ?? []
+      const errs = data.errors ? Object.values(data.errors) : []
+      const combined = [...msgs, ...errs].filter(Boolean).join(' ')
+      if (combined) return `[${status}] ${combined}`
+      if (data.message) return `[${status}] ${data.message}`
+    }
+    if (status === 403) return `[403] Permission denied — the service account may not have rights to perform this transition in the current issue state.`
+    if (status === 400) return `[400] Transition not valid — the issue may already be in this state.`
+    if (status === 404) return `[404] Issue or transition not found.`
+    return e.message
+  }
+  return err instanceof Error ? err.message : String(err)
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface JiraUser {
@@ -40,23 +67,28 @@ export interface AssetInfo {
   assignee?: string
 }
 
+export interface JiraTransition {
+  id: string
+  name: string
+  to: { name: string }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/**
- * Extract the numeric item ID from an Ephor Asset Manager QR URL.
- * Example: https://jira.promotor.com/plugins/servlet/com.spartez.ephor/item/57860
- */
 export function extractItemIdFromUrl(url: string): string | null {
   const match = url.match(/\/item\/(\d+)$/)
   return match?.[1] ?? null
 }
 
+// Transition name patterns to match against (case-insensitive)
+const CHECK_IN_NAMES  = ['check in', 'checkin', 'check-in', 'checked in', 'return', 'returned']
+const CHECK_OUT_NAMES = ['check out', 'checkout', 'check-out', 'checked out', 'take', 'borrow']
+
+function matchesCheckIn(name: string)  { return CHECK_IN_NAMES.some(n  => name.toLowerCase().includes(n)) }
+function matchesCheckOut(name: string) { return CHECK_OUT_NAMES.some(n => name.toLowerCase().includes(n)) }
+
 // ── User auth ──────────────────────────────────────────────────────────────
 
-/**
- * Validate Jira credentials by calling /rest/api/2/myself.
- * Returns the user profile on success, throws on failure.
- */
 export async function validateJiraCredentials(
   username: string,
   password: string
@@ -67,12 +99,8 @@ export async function validateJiraCredentials(
   return data
 }
 
-// ── Asset info (uses the logged-in user's credentials) ─────────────────────
+// ── Asset info ─────────────────────────────────────────────────────────────
 
-/**
- * Fetch asset information from the Spartez/Ephor Asset Manager plugin.
- * Uses the logged-in user's token so reads are audited under their account.
- */
 export async function getAssetInfo(
   itemId: string,
   userToken: string
@@ -89,20 +117,61 @@ export async function getAssetInfo(
   }
 }
 
-// ── Transitions (admin service account only) ───────────────────────────────
+// ── Available transitions ──────────────────────────────────────────────────
 
 /**
- * Trigger a Jira workflow transition using the admin service account.
+ * Fetch all transitions currently available for this issue (admin account).
+ */
+export async function getAvailableTransitions(issueId: string): Promise<JiraTransition[]> {
+  const { data } = await adminClient.get(
+    `/rest/api/2/issue/${issueId}/transitions`
+  )
+  return (data.transitions ?? []) as JiraTransition[]
+}
+
+// ── Transitions ────────────────────────────────────────────────────────────
+
+/**
+ * Trigger a workflow transition using the admin service account.
  *
- * Transition IDs (confirmed in Jira workflow config):
- *   "21"  → Check-in
- *   "201" → Check-out
+ * Resolution order:
+ *   1. Look for a transition whose name matches the action (check-in / check-out)
+ *   2. Fall back to the hardcoded ID ("21" check-in, "201" check-out)
+ *
+ * This makes the app resilient to workflow reconfiguration and avoids
+ * hardcoded-ID mismatches being the cause of 403 / 400 errors.
  */
 export async function transitionIssue(
   issueId: string,
-  transitionId: '21' | '201'
-): Promise<void> {
+  action: 'checkin' | 'checkout'
+): Promise<{ usedId: string; usedName: string }> {
+  const available = await getAvailableTransitions(issueId)
+
+  let target: JiraTransition | undefined
+
+  if (action === 'checkin') {
+    target = available.find(t => matchesCheckIn(t.name))
+  } else {
+    target = available.find(t => matchesCheckOut(t.name))
+  }
+
+  // Fallback to hardcoded IDs if name matching finds nothing
+  if (!target) {
+    const fallbackId = action === 'checkin' ? '21' : '201'
+    target = available.find(t => t.id === fallbackId)
+  }
+
+  if (!target) {
+    const names = available.map(t => `"${t.name}" (id:${t.id})`).join(', ')
+    throw new Error(
+      `No matching transition found for ${action}.\n` +
+      `Available transitions: ${names || 'none'}.`
+    )
+  }
+
   await adminClient.post(`/rest/api/2/issue/${issueId}/transitions`, {
-    transition: { id: transitionId },
+    transition: { id: target.id },
   })
+
+  return { usedId: target.id, usedName: target.name }
 }
