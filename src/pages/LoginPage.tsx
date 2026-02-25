@@ -170,7 +170,7 @@ export default function LoginPage({ onLoginSuccess }: Props) {
               className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl object-contain"
             />
             <h1 className="font-display font-extrabold text-4xl tracking-tight text-white">
-              ProMotor OPS
+              Promotor OPS
             </h1>
             <p className="text-slate-400 text-sm mt-2">Sign in with your Jira account</p>
           </div>
@@ -282,7 +282,7 @@ export default function LoginPage({ onLoginSuccess }: Props) {
           className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl object-contain"
         />
         <h1 className="font-display font-extrabold text-4xl tracking-tight text-white">
-          ProMotor OPS
+          Promotor OPS
         </h1>
         <p className="text-slate-300 text-sm mt-2 font-medium">
           {storedUser?.displayName ?? storedUser?.username}

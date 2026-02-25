@@ -11,7 +11,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'ProMotor OPS',
+        name: 'Promotor OPS',
         short_name: 'ProMotorOPS',
         description: 'Asset check-in / check-out via QR scan',
         theme_color: '#1e40af',

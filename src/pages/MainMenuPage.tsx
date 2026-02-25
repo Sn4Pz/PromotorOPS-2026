@@ -79,7 +79,7 @@ export default function MainMenuPage({ displayName, onSelect, onLogout }: Props)
           alt="ProMotor"
           className="w-14 h-14 mx-auto mb-2 rounded-xl shadow-lg object-contain"
         />
-        <h1 className="font-display font-extrabold text-2xl tracking-tight text-white">ProMotor OPS</h1>
+        <h1 className="font-display font-extrabold text-2xl tracking-tight text-white">Promotor OPS</h1>
         <p className="text-slate-400 text-sm mt-0.5">{displayName}</p>
       </div>
 
