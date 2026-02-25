@@ -1,28 +1,37 @@
-import axios from 'axios'
+import axios, { AxiosInstance } from 'axios'
 
-// Service account used for all Jira API calls.
-// These credentials hold the transition permission so that end-users
-// are forced to use this app to scan the physical asset — the Jira
-// button is not visible to regular users.
-const JIRA_USER = 'andrei.buldus'
-const JIRA_PASS = 'Coracoid2015'
-const BASIC_TOKEN = btoa(`${JIRA_USER}:${JIRA_PASS}`)
+// ── Service account ────────────────────────────────────────────────────────
+// Used ONLY for workflow transitions (check-in / check-out).
+// Regular users do not have this permission in Jira, which forces them to
+// use this app and physically scan the equipment.
+const ADMIN_USER = 'andrei.buldus'
+const ADMIN_PASS = 'Coracoid2015'
+const ADMIN_TOKEN = btoa(`${ADMIN_USER}:${ADMIN_PASS}`)
 
-// In development the Vite proxy rewrites /jira/* → https://jira.promotor.com/*
-// In production build, point VITE_JIRA_BASE_URL to the real origin.
 const BASE_URL = import.meta.env.VITE_JIRA_BASE_URL ?? '/jira'
 
-const client = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    Authorization: `Basic ${BASIC_TOKEN}`,
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  },
-  timeout: 15000,
-})
+function makeClient(authToken: string): AxiosInstance {
+  return axios.create({
+    baseURL: BASE_URL,
+    headers: {
+      Authorization: `Basic ${authToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    timeout: 15000,
+  })
+}
+
+// Admin client — transitions only
+const adminClient = makeClient(ADMIN_TOKEN)
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+export interface JiraUser {
+  name: string
+  displayName: string
+  emailAddress?: string
+}
 
 export interface AssetInfo {
   jiraIssueId: string
@@ -42,25 +51,48 @@ export function extractItemIdFromUrl(url: string): string | null {
   return match?.[1] ?? null
 }
 
-// ── API calls ──────────────────────────────────────────────────────────────
+// ── User auth ──────────────────────────────────────────────────────────────
+
+/**
+ * Validate Jira credentials by calling /rest/api/2/myself.
+ * Returns the user profile on success, throws on failure.
+ */
+export async function validateJiraCredentials(
+  username: string,
+  password: string
+): Promise<JiraUser> {
+  const token  = btoa(`${username}:${password}`)
+  const client = makeClient(token)
+  const { data } = await client.get<JiraUser>('/rest/api/2/myself')
+  return data
+}
+
+// ── Asset info (uses the logged-in user's credentials) ─────────────────────
 
 /**
  * Fetch asset information from the Spartez/Ephor Asset Manager plugin.
+ * Uses the logged-in user's token so reads are audited under their account.
  */
-export async function getAssetInfo(itemId: string): Promise<AssetInfo> {
+export async function getAssetInfo(
+  itemId: string,
+  userToken: string
+): Promise<AssetInfo> {
+  const client = makeClient(userToken)
   const { data } = await client.get(
     `/rest/com-spartez-ephor/1.0/item/${itemId}`
   )
   return {
     jiraIssueId: data.jiraIssueId ?? data.issueKey ?? data.key ?? String(data.id),
-    summary: data.summary ?? data.name,
-    status: data.status?.name ?? data.status,
-    assignee: data.assignee?.displayName ?? data.assignee,
+    summary:     data.summary ?? data.name,
+    status:      data.status?.name ?? data.status,
+    assignee:    data.assignee?.displayName ?? data.assignee,
   }
 }
 
+// ── Transitions (admin service account only) ───────────────────────────────
+
 /**
- * Trigger a Jira workflow transition on the linked issue.
+ * Trigger a Jira workflow transition using the admin service account.
  *
  * Transition IDs (confirmed in Jira workflow config):
  *   "21"  → Check-in
@@ -70,7 +102,7 @@ export async function transitionIssue(
   issueId: string,
   transitionId: '21' | '201'
 ): Promise<void> {
-  await client.post(`/rest/api/2/issue/${issueId}/transitions`, {
+  await adminClient.post(`/rest/api/2/issue/${issueId}/transitions`, {
     transition: { id: transitionId },
   })
 }

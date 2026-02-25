@@ -43,6 +43,7 @@ export default defineConfig({
     })
   ],
   server: {
+    host: '192.168.123.177',
     port: 5173,
     proxy: {
       '/jira': {

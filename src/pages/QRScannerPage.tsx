@@ -5,6 +5,7 @@ import { ScanMode, SCAN_MODE_LABELS, SCAN_MODE_COLORS } from '../types'
 
 interface Props {
   mode: ScanMode
+  userToken: string
   onAssetFound: (info: AssetInfo) => void
   onError: (msg: string) => void
   onBack: () => void
@@ -12,7 +13,7 @@ interface Props {
 
 type ScanState = 'scanning' | 'loading' | 'error'
 
-export default function QRScannerPage({ mode, onAssetFound, onError, onBack }: Props) {
+export default function QRScannerPage({ mode, userToken, onAssetFound, onError, onBack }: Props) {
   const scannerRef  = useRef<Html5Qrcode | null>(null)
   const handledRef  = useRef(false)
   const [scanState, setScanState] = useState<ScanState>('scanning')
@@ -46,7 +47,7 @@ export default function QRScannerPage({ mode, onAssetFound, onError, onBack }: P
         }
 
         try {
-          const info = await getAssetInfo(itemId)
+          const info = await getAssetInfo(itemId, userToken)
           await qr.stop()
           onAssetFound(info)
         } catch (e) {
