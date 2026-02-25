@@ -17,7 +17,7 @@ const menuItems: {
   {
     mode: 'checkin',
     label: 'Check In',
-    description: 'Scan equipment to mark as returned',
+    description: 'Scan equipment to mark as checked-in',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
@@ -31,7 +31,7 @@ const menuItems: {
   {
     mode: 'checkout',
     label: 'Check Out',
-    description: 'Scan equipment to mark as taken',
+    description: 'Scan equipment to mark as checked-out',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
@@ -45,7 +45,7 @@ const menuItems: {
   {
     mode: 'view',
     label: 'Scan Asset / Issue',
-    description: 'Look up equipment info without action',
+    description: 'Look up asset / issue information',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
