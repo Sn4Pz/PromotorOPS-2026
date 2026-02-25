@@ -164,13 +164,15 @@ export default function LoginPage({ onLoginSuccess }: Props) {
         <div className="w-full max-w-xs">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-700 mb-3 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h4l3 8 4-16 3 8h4" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-white">ProMotor OPS</h1>
-            <p className="text-slate-400 text-sm mt-1">Sign in with your Jira account</p>
+            <img
+              src="/favicon.png"
+              alt="ProMotor"
+              className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl object-contain"
+            />
+            <h1 className="font-display font-extrabold text-4xl tracking-tight text-white">
+              ProMotor OPS
+            </h1>
+            <p className="text-slate-400 text-sm mt-2">Sign in with your Jira account</p>
           </div>
 
           <form onSubmit={handleJiraLogin} className="space-y-3">
@@ -274,13 +276,15 @@ export default function LoginPage({ onLoginSuccess }: Props) {
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 select-none">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-700 mb-3 shadow-lg">
-          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h4l3 8 4-16 3 8h4" />
-          </svg>
-        </div>
-        <h1 className="text-xl font-bold text-white">ProMotor OPS</h1>
-        <p className="text-slate-300 text-sm mt-1">
+        <img
+          src="/favicon.png"
+          alt="ProMotor"
+          className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl object-contain"
+        />
+        <h1 className="font-display font-extrabold text-4xl tracking-tight text-white">
+          ProMotor OPS
+        </h1>
+        <p className="text-slate-300 text-sm mt-2 font-medium">
           {storedUser?.displayName ?? storedUser?.username}
         </p>
         <p className="text-slate-400 text-xs mt-0.5">Enter your PIN</p>

@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       keyframes: {
         shake: {
           '0%, 100%': { transform: 'translateX(0)' },
