@@ -18,10 +18,15 @@ export default {
           '0%': { transform: 'translateY(20px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
+        scanline: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(248px)' },
+        },
       },
       animation: {
-        shake: 'shake 0.4s ease-in-out',
-        slideUp: 'slideUp 0.25s ease-out',
+        shake:    'shake 0.4s ease-in-out',
+        slideUp:  'slideUp 0.25s ease-out',
+        scanline: 'scanline 2s ease-in-out infinite',
       },
       colors: {
         brand: {
