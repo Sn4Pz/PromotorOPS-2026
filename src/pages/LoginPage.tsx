@@ -125,9 +125,9 @@ export default function LoginPage({ onLoginSuccess }: Props) {
 
   function PinDots() {
     return (
-      <div className={`flex gap-5 mb-3 ${shaking ? 'animate-shake' : ''}`}>
+      <div className={`flex gap-5 mb-1 ${shaking ? 'animate-shake' : ''}`}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all duration-150 ${
+          <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
             i < pin.length ? 'bg-brand-400 border-brand-400 scale-110' : 'bg-transparent border-slate-500'
           }`} />
         ))}
@@ -137,18 +137,18 @@ export default function LoginPage({ onLoginSuccess }: Props) {
 
   function Numpad() {
     return (
-      <div className="grid grid-cols-3 gap-4 w-full max-w-xs">
+      <div className="grid grid-cols-3 gap-3 w-full max-w-[17rem]">
         {numpadDigits.map((d, i) => {
           if (d === '') return <div key={i} />
           if (d === '⌫') return (
             <button key={i} onClick={handleDelete}
-              className="flex items-center justify-center h-20 rounded-2xl bg-slate-700 active:bg-slate-600 text-3xl font-semibold text-slate-300 transition-colors">
+              className="numpad-btn flex items-center justify-center rounded-2xl bg-slate-700 active:bg-slate-600 text-2xl font-semibold text-slate-300 transition-colors">
               {d}
             </button>
           )
           return (
             <button key={i} onClick={() => handleDigit(d)}
-              className="flex items-center justify-center h-20 rounded-2xl bg-slate-700 active:bg-brand-600 text-3xl font-bold text-white transition-colors">
+              className="numpad-btn flex items-center justify-center rounded-2xl bg-slate-700 active:bg-brand-600 text-2xl font-bold text-white transition-colors">
               {d}
             </button>
           )
@@ -236,12 +236,12 @@ export default function LoginPage({ onLoginSuccess }: Props) {
 
   const pinTopSubtitle =
     step === 'set-pin'
-      ? <p className="text-slate-300 text-base font-semibold">
+      ? <p className="text-slate-300 text-sm font-semibold">
           Welcome, <span className="text-white">{storedUser?.displayName}</span>
         </p>
       : step === 'confirm-pin'
-      ? <p className="text-slate-400 text-base">Confirm your PIN</p>
-      : <p className="text-slate-300 text-lg font-semibold">
+      ? <p className="text-slate-400 text-sm">Confirm your PIN</p>
+      : <p className="text-slate-300 text-base font-semibold">
           {storedUser?.displayName ?? storedUser?.username}
         </p>
 
@@ -263,35 +263,33 @@ export default function LoginPage({ onLoginSuccess }: Props) {
   return (
     <div className="flex flex-col h-full select-none pt-safe-top pb-safe-bottom">
 
-      {/* ── Top zone: branding (38%) ── */}
-      <div className="flex flex-col items-center justify-center px-6 text-center"
-        style={{ flex: '2' }}>
+      {/* ── Top zone: branding — reduced ratio (1.4 instead of 2) so it doesn't
+            dominate on Android where the status bar eats less than iOS's island ── */}
+      <div className="flex flex-col items-center justify-end px-6 pb-2 text-center"
+        style={{ flex: '1.4' }}>
         <img src="/favicon.png" alt="Promotor"
-          className="w-24 h-24 mb-5 rounded-3xl shadow-xl object-contain" />
-        <h1 className="font-display font-extrabold text-4xl tracking-tight text-white">
+          className="w-20 h-20 mb-3 rounded-3xl shadow-xl object-contain" />
+        <h1 className="font-display font-extrabold text-3xl tracking-tight text-white">
           Promotor OPS
         </h1>
-        {/* Fixed-height subtitle — prevents layout shift between steps */}
-        <div className="h-12 flex flex-col items-center justify-center mt-1">
+        <div className="h-8 flex flex-col items-center justify-center mt-1">
           {pinTopSubtitle}
         </div>
       </div>
 
-      {/* ── Bottom zone: prompt + keypad (62%) ── */}
-      <div className="flex flex-col items-center justify-center px-6 gap-4 pb-12"
+      {/* ── Bottom zone: prompt + keypad ── */}
+      <div className="flex flex-col items-center justify-center px-6 gap-2 pb-6"
         style={{ flex: '3' }}>
-        <p className="text-slate-400 text-base">{pinPrompt}</p>
+        <p className="text-slate-400 text-sm">{pinPrompt}</p>
         <PinDots />
-        {/* Fixed-height error row — prevents keypad jump on error */}
         <div className="h-5 flex items-center justify-center">
-          {pinError && <p className="text-red-400 text-base">{pinError}</p>}
+          {pinError && <p className="text-red-400 text-sm">{pinError}</p>}
         </div>
         <Numpad />
-        {/* Fixed-height link slot — invisible when unused so keypad stays put */}
-        <div className="h-10 flex items-center justify-center pt-6">
+        <div className="h-8 flex items-center justify-center pt-2">
           {pinLinkLabel && (
             <button onClick={handlePinLink}
-              className="text-slate-500 text-base underline">
+              className="text-slate-500 text-sm underline">
               {pinLinkLabel}
             </button>
           )}

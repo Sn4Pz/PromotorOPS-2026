@@ -4,6 +4,28 @@ import { getAssetItem, getIssueDetails, extractItemIdFromUrl, AssetItem, JiraIss
 import { ScanMode, SCAN_MODE_LABELS, SCAN_MODE_COLORS } from '../types'
 import { getCachedStream, setCachedStream, releaseCachedStream } from '../camera/cache'
 
+// BarcodeDetector is natively available in Chrome on Android (hardware-accelerated).
+// We use it when present and fall back to jsQR on iOS/Safari/Firefox.
+interface NativeBarcodeDetector {
+  detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>>
+}
+declare global {
+  interface Window {
+    BarcodeDetector?: new (opts: { formats: string[] }) => NativeBarcodeDetector
+  }
+}
+
+function createNativeDetector(): NativeBarcodeDetector | null {
+  if (typeof window === 'undefined' || !window.BarcodeDetector) return null
+  try {
+    return new window.BarcodeDetector({ formats: ['qr_code'] })
+  } catch {
+    return null
+  }
+}
+// Module-level singleton — instantiated once, reused across mounts
+const nativeDetector = createNativeDetector()
+
 export interface ScannedData {
   asset: AssetItem
   issue: JiraIssue
@@ -19,12 +41,18 @@ interface Props {
 
 type ScanState = 'permission' | 'requesting' | 'scanning' | 'loading' | 'error' | 'denied'
 
+// jsQR scan interval: ~8 fps is plenty for QR detection and much lighter on the CPU
+const JSQR_INTERVAL_MS = 120
+// Max width fed to jsQR — QR codes don't need high resolution to decode
+const JSQR_MAX_WIDTH = 640
+
 export default function QRScannerPage({ mode, userToken, onScanned, onError, onBack }: Props) {
-  const videoRef   = useRef<HTMLVideoElement>(null)
-  const canvasRef  = useRef<HTMLCanvasElement>(null)
-  const streamRef  = useRef<MediaStream | null>(null)
-  const rafRef     = useRef<number>(0)
-  const handledRef = useRef(false)
+  const videoRef    = useRef<HTMLVideoElement>(null)
+  const canvasRef   = useRef<HTMLCanvasElement>(null)
+  const streamRef   = useRef<MediaStream | null>(null)
+  const rafRef      = useRef<number>(0)
+  const handledRef  = useRef(false)
+  const lastScanRef = useRef<number>(0)
 
   const [scanState, setScanState] = useState<ScanState>('permission')
   const [statusMsg, setStatusMsg] = useState('')
@@ -41,58 +69,94 @@ export default function QRScannerPage({ mode, userToken, onScanned, onError, onB
     streamRef.current = null
   }
 
-  const scanFrame = useCallback(async () => {
-    const video  = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas || video.readyState < video.HAVE_ENOUGH_DATA) {
-      rafRef.current = requestAnimationFrame(scanFrame); return
-    }
-    canvas.width  = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) { rafRef.current = requestAnimationFrame(scanFrame); return }
+  const handleQrData = useCallback(async (data: string) => {
+    if (handledRef.current) return
+    handledRef.current = true
+    setScanState('loading')
+    setStatusMsg('QR detected…')
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' })
-
-    if (code?.data && !handledRef.current) {
-      handledRef.current = true
-      setScanState('loading')
-      setStatusMsg('QR detected…')
-
-      const itemId = extractItemIdFromUrl(code.data)
-      if (!itemId) {
-        const msg = 'Not a valid Asset Manager QR code.'
-        setScanState('error'); setStatusMsg(msg); onError(msg)
-        setTimeout(() => { handledRef.current = false; setScanState('scanning'); setStatusMsg('Point camera at the QR code') }, 2500)
-        rafRef.current = requestAnimationFrame(scanFrame)
-        return
-      }
-
-      try {
-        setStatusMsg('Fetching asset info…')
-        const asset = await getAssetItem(itemId, userToken)
-
-        setStatusMsg(`Loading issue ${asset.jiraIssueId}…`)
-        const issue = await getIssueDetails(asset.jiraIssueId, userToken)
-
-        stopCamera()
-        onScanned({ asset, issue })
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to load asset.'
-        setScanState('error'); setStatusMsg(msg); onError(msg)
-        setTimeout(() => {
-          handledRef.current = false; setScanState('scanning')
-          setStatusMsg('Point camera at the QR code on the equipment')
-          rafRef.current = requestAnimationFrame(scanFrame)
-        }, 4000)
-      }
+    const itemId = extractItemIdFromUrl(data)
+    if (!itemId) {
+      const msg = 'Not a valid Asset Manager QR code.'
+      setScanState('error'); setStatusMsg(msg); onError(msg)
+      setTimeout(() => {
+        handledRef.current = false
+        setScanState('scanning')
+        setStatusMsg('Point camera at the QR code')
+      }, 2500)
       return
     }
-    rafRef.current = requestAnimationFrame(scanFrame)
+
+    try {
+      setStatusMsg('Fetching asset info…')
+      const asset = await getAssetItem(itemId, userToken)
+      setStatusMsg(`Loading issue ${asset.jiraIssueId}…`)
+      const issue = await getIssueDetails(asset.jiraIssueId, userToken)
+      stopCamera()
+      onScanned({ asset, issue })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to load asset.'
+      setScanState('error'); setStatusMsg(msg); onError(msg)
+      setTimeout(() => {
+        handledRef.current = false
+        setScanState('scanning')
+        setStatusMsg('Point camera at the QR code on the equipment')
+        rafRef.current = requestAnimationFrame(scanFrame)
+      }, 4000)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userToken])
+
+  const scanFrame = useCallback(async () => {
+    const video = videoRef.current
+    if (!video || video.readyState < video.HAVE_ENOUGH_DATA) {
+      rafRef.current = requestAnimationFrame(scanFrame); return
+    }
+
+    if (nativeDetector) {
+      // ── Fast path: BarcodeDetector (Chrome on Android) ──────────────────
+      // Reads directly from the video element — no canvas, no GPU→CPU readback.
+      try {
+        const barcodes = await nativeDetector.detect(video)
+        if (barcodes.length > 0 && barcodes[0].rawValue) {
+          await handleQrData(barcodes[0].rawValue)
+          return
+        }
+      } catch {
+        // Single frame failure — just continue
+      }
+    } else {
+      // ── Fallback path: jsQR (iOS / Safari / Firefox) ────────────────────
+      // Throttle to JSQR_INTERVAL_MS so we don't saturate the JS thread.
+      const now = performance.now()
+      if (now - lastScanRef.current < JSQR_INTERVAL_MS) {
+        rafRef.current = requestAnimationFrame(scanFrame); return
+      }
+      lastScanRef.current = now
+
+      const canvas = canvasRef.current
+      if (!canvas) { rafRef.current = requestAnimationFrame(scanFrame); return }
+
+      // Downscale: QR codes decode fine at 640 px wide, saves ~75% pixel work vs 1280
+      const scanW = Math.min(video.videoWidth, JSQR_MAX_WIDTH)
+      const scanH = Math.round(video.videoHeight * (scanW / video.videoWidth))
+      canvas.width  = scanW
+      canvas.height = scanH
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) { rafRef.current = requestAnimationFrame(scanFrame); return }
+
+      ctx.drawImage(video, 0, 0, scanW, scanH)
+      const imageData = ctx.getImageData(0, 0, scanW, scanH)
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' })
+      if (code?.data) {
+        await handleQrData(code.data)
+        return
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(scanFrame)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleQrData])
 
   // Called when the user taps "Enable Camera" on the permission screen,
   // or immediately if a cached stream already exists.
@@ -202,9 +266,17 @@ export default function QRScannerPage({ mode, userToken, onScanned, onError, onB
         </div>
       </div>
 
-      <video ref={videoRef} className="hidden" playsInline muted autoPlay />
-      <canvas ref={canvasRef} className="flex-1 w-full object-cover"
-        style={{ display: scanState === 'requesting' || scanState === 'error' ? 'none' : 'block' }} />
+      {/* Video element is the live viewfinder — shown directly, no canvas copy needed */}
+      <video
+        ref={videoRef}
+        className="flex-1 w-full object-cover"
+        playsInline
+        muted
+        autoPlay
+        style={{ display: scanState === 'scanning' || scanState === 'loading' ? 'block' : 'none' }}
+      />
+      {/* Hidden canvas used only by the jsQR fallback path (iOS/Safari) */}
+      <canvas ref={canvasRef} className="hidden" />
 
       {(scanState === 'scanning' || scanState === 'loading') && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

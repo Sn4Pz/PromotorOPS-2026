@@ -65,44 +65,48 @@ export default function MainMenuPage({ displayName, onSelect, onLogout }: Props)
     <div className="flex flex-col h-full bg-slate-900">
 
       {/* ── Top bar ── */}
-      <div className="shrink-0 px-5 pt-safe-top pt-4 pb-4 flex items-center justify-between border-b border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <img src="/favicon.png" alt="Promotor" className="w-9 h-9 rounded-xl object-contain" />
-          <h1 className="font-display font-extrabold text-2xl tracking-tight text-white">
+      <div className="shrink-0 px-5 pt-safe-top pb-4 flex items-center justify-between border-b border-slate-800">
+        {/* whitespace-nowrap + text-xl (down from 2xl) prevent the title from
+            wrapping on Android where Roboto is slightly wider than San Francisco */}
+        <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+          <img src="/favicon.png" alt="Promotor" className="w-9 h-9 rounded-xl object-contain shrink-0" />
+          <h1 className="font-display font-extrabold text-xl tracking-tight text-white whitespace-nowrap">
             Promotor OPS
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 ml-3">
           <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
             <span className="text-white text-sm font-bold leading-none">
               {displayName.charAt(0).toUpperCase()}
             </span>
           </div>
-          <span className="text-slate-400 text-sm font-medium max-w-[130px] truncate">
+          {/* max-w tightened so long names don't push the title off the row */}
+          <span className="text-slate-400 text-sm font-medium max-w-[90px] truncate">
             {displayName}
           </span>
         </div>
       </div>
 
-      {/* ── Action cards — stretch to fill available space, outer padding keeps them from being too tall ── */}
-      <div className="flex-1 flex flex-col px-5 gap-5 py-14">
+      {/* ── Action cards — flex-1 fills space, max-h caps each card so they
+            don't overstretch on tall viewports (the A51 issue) ── */}
+      <div className="flex-1 flex flex-col items-stretch justify-center px-4 gap-3 py-4">
         {actionItems.map((item) => (
           <button
             key={item.mode}
             onClick={() => onSelect(item.mode)}
             className={`
-              flex-1 w-full flex items-center gap-5 px-6 rounded-3xl border
+              flex-1 w-full max-h-[8.5rem] flex items-center gap-4 px-5 rounded-3xl border
               ${item.color} ${item.border}
               active:scale-[0.97] transition-transform duration-100
               text-left shadow-lg
             `}
           >
-            <div className={`w-16 h-16 rounded-2xl ${item.iconBg} flex items-center justify-center shrink-0 text-white shadow`}>
+            <div className={`w-12 h-12 rounded-2xl ${item.iconBg} flex items-center justify-center shrink-0 text-white shadow`}>
               {item.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-bold text-xl leading-tight">{item.label}</p>
-              <p className="text-slate-300/70 text-base mt-2 leading-snug">{item.sub}</p>
+              <p className="text-white font-bold text-base leading-tight">{item.label}</p>
+              <p className="text-slate-300/70 text-sm mt-0.5 leading-snug">{item.sub}</p>
             </div>
             <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -112,7 +116,7 @@ export default function MainMenuPage({ displayName, onSelect, onLogout }: Props)
       </div>
 
       {/* ── Sign out ── */}
-      <div className="shrink-0 px-5 pb-safe-bottom pb-6 flex items-center justify-center">
+      <div className="shrink-0 px-5 pb-safe-bottom flex items-center justify-center">
         <button
           onClick={onLogout}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-700 text-slate-400 active:text-white active:border-slate-500 transition-colors"
