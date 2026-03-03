@@ -25,9 +25,16 @@
     text-size-adjust: 100%;
   }
 
-  html, body, #root {
+  html, body {
     height: 100%;
-    height: 100dvh;
+  }
+
+  #root {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   body {

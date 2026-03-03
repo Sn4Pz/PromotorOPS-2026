@@ -167,20 +167,20 @@ export default function LoginPage({ onLoginSuccess }: Props) {
 
   if (step === 'jira') {
     return (
-      <div className="h-full overflow-y-auto pt-safe-top pb-safe-bottom">
-        <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 gap-10">
-          {/* Branding */}
-          <div className="flex flex-col items-center text-center shrink-0">
-            <img src="/favicon.png" alt="Promotor"
-              className="w-32 h-32 mb-6 rounded-3xl shadow-xl object-contain" />
-            <h1 className="font-display font-extrabold text-5xl tracking-tight text-white">
-              Promotor OPS
-            </h1>
-            <p className="text-slate-400 text-base mt-3">Sign in with your Jira account</p>
-          </div>
+      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pt-safe-top pb-safe-bottom">
+        {/* ── Top half: branding ── */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <img src="/favicon.png" alt="Promotor"
+            className="w-32 h-32 mb-6 rounded-3xl shadow-xl object-contain" />
+          <h1 className="font-display font-extrabold text-5xl tracking-tight text-white">
+            Promotor OPS
+          </h1>
+          <p className="text-slate-400 text-base mt-3">Sign in with your Jira account</p>
+        </div>
 
-          {/* Form */}
-          <form onSubmit={handleJiraLogin} className="space-y-5 w-full max-w-xs shrink-0">
+        {/* ── Bottom half: form ── */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <form onSubmit={handleJiraLogin} className="space-y-5 w-full max-w-xs">
             <div>
               <label className="block text-sm text-slate-400 mb-2 uppercase tracking-wider font-medium">
                 Jira Username
@@ -268,12 +268,10 @@ export default function LoginPage({ onLoginSuccess }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full select-none pt-safe-top pb-safe-bottom">
+    <div className="flex-1 min-h-0 flex flex-col select-none pt-safe-top pb-safe-bottom">
 
-      {/* ── Top zone: branding — reduced ratio (1.4 instead of 2) so it doesn't
-            dominate on Android where the status bar eats less than iOS's island ── */}
-      <div className="flex flex-col items-center justify-end px-6 pb-2 text-center"
-        style={{ flex: '1.4' }}>
+      {/* ── Top half: branding + welcome ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         <img src="/favicon.png" alt="Promotor"
           className="w-20 h-20 mb-3 rounded-3xl shadow-xl object-contain" />
         <h1 className="font-display font-extrabold text-3xl tracking-tight text-white">
@@ -284,9 +282,8 @@ export default function LoginPage({ onLoginSuccess }: Props) {
         </div>
       </div>
 
-      {/* ── Bottom zone: prompt + keypad ── */}
-      <div className="flex flex-col items-center justify-center px-6 gap-2 pb-6"
-        style={{ flex: '3' }}>
+      {/* ── Bottom half: prompt + keypad ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-2">
         <p className="text-slate-400 text-sm">{pinPrompt}</p>
         <PinDots />
         <div className="h-5 flex items-center justify-center">

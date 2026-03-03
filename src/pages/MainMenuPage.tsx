@@ -112,18 +112,18 @@ export default function MainMenuPage({ displayName, username, avatarUrl, jiraTok
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col bg-slate-900">
 
       {/* ── Top bar ── */}
-      <div className="shrink-0 px-5 pt-safe-top pb-4 flex items-center justify-center border-b border-slate-800">
+      <div className="shrink-0 px-5 pt-safe-top py-3 flex items-center justify-center border-b border-slate-800">
         <img src="/favicon.png" alt="Promotor" className="w-9 h-9 rounded-xl object-contain shrink-0" />
         <h1 className="font-display font-extrabold text-xl tracking-tight text-white whitespace-nowrap ml-2.5">
           Promotor OPS
         </h1>
       </div>
 
-      {/* ── Action cards ── */}
-      <div className="flex-1 flex flex-col items-stretch justify-center px-4 gap-3 py-4">
+      {/* ── Middle: cards centered ── */}
+      <div className="flex-1 min-h-0 flex flex-col items-stretch justify-center px-4 gap-3">
         {actionItems.map((item) => (
           <button
             key={item.mode}
@@ -149,8 +149,9 @@ export default function MainMenuPage({ displayName, username, avatarUrl, jiraTok
         ))}
       </div>
 
-      {/* ── User + sign out ── */}
-      <div className="shrink-0 px-5 pb-safe-bottom pb-4 pt-3 flex flex-col items-center gap-3">
+      {/* ── Bottom bar ── */}
+      <div className="shrink-0 px-5 pt-2 pb-2 flex flex-col items-center gap-2"
+        style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))' }}>
         <button
           onClick={openProfile}
           className="flex items-center gap-2.5 active:opacity-70"

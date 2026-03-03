@@ -490,7 +490,7 @@ export default function AssetInfoPage({
       {lightbox   && <Lightbox   att={lightbox}   token={userToken} onClose={() => setLightbox(null)} />}
       {docViewer  && <DocViewer  att={docViewer}  token={userToken} onClose={() => setDocViewer(null)} />}
 
-      <div className="flex flex-col h-full bg-slate-900">
+      <div className="flex-1 min-h-0 flex flex-col bg-slate-900">
 
         {/* ── Header ── */}
         <div className="px-4 pt-safe-top pt-4 pb-0 border-b border-slate-700 shrink-0">

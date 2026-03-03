@@ -31,7 +31,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-900 overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col bg-slate-900">
       {screen === 'login' && (
         <LoginPage onLoginSuccess={handleLoginSuccess} />
       )}

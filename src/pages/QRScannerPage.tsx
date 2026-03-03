@@ -243,7 +243,7 @@ export default function QRScannerPage({ mode, userToken, onScanned, onError, onB
     mode === 'checkout' ? 'border-blue-400'    : 'border-violet-400'
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div className="flex-1 min-h-0 flex flex-col bg-black relative">
       <div className="absolute top-0 inset-x-0 z-10 px-4 pt-safe-top pt-4 pb-4 flex items-center gap-3"
         style={{ background: 'linear-gradient(to bottom,rgba(15,23,42,.95) 0%,rgba(15,23,42,.65) 80%,transparent 100%)' }}>
         <button onClick={() => { stopCamera(); onBack() }}
