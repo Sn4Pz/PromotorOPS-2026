@@ -308,7 +308,7 @@ export default function QRScannerPage({ mode, userToken, onScanned, onError, onB
           </div>
           <div className="bg-blue-900/40 border border-blue-700/50 rounded-2xl px-5 py-4 w-full max-w-xs">
             <p className="text-blue-200 text-sm leading-relaxed text-center">
-              When iOS asks, tap <span className="text-white font-bold">"Allow"</span> to grant access.
+              When your browser asks, tap <span className="text-white font-bold">"Allow"</span> to grant access.
             </p>
           </div>
           <button
@@ -346,10 +346,9 @@ export default function QRScannerPage({ mode, userToken, onScanned, onError, onB
             </p>
           </div>
           <div className="bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 w-full max-w-xs space-y-2">
-            <p className="text-slate-300 text-sm">
-              <span className="text-white font-semibold">Settings</span> → <span className="text-white font-semibold">Privacy &amp; Security</span> → <span className="text-white font-semibold">Camera</span>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              Open your browser's site settings and allow camera access for this page, then return here.
             </p>
-            <p className="text-slate-400 text-xs">Enable camera access for Safari, then return here.</p>
           </div>
           <button
             onClick={requestCamera}

@@ -158,24 +158,28 @@ export default function LoginPage({ onLoginSuccess }: Props) {
   }
 
   // ── Step: Jira credentials ───────────────────────────────────────────────
+  function scrollInputIntoView(e: React.FocusEvent<HTMLInputElement>) {
+    setTimeout(() => {
+      e.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 300)
+  }
+
   if (step === 'jira') {
     return (
-      <div className="flex flex-col h-full pt-safe-top pb-safe-bottom">
-        {/* Branding — 38% of screen height */}
-        <div className="flex flex-col items-center justify-end pb-6 px-6 text-center"
-          style={{ flex: '2' }}>
-          <img src="/favicon.png" alt="Promotor"
-            className="w-32 h-32 mb-6 rounded-3xl shadow-xl object-contain" />
-          <h1 className="font-display font-extrabold text-5xl tracking-tight text-white">
-            Promotor OPS
-          </h1>
-          <p className="text-slate-400 text-base mt-3">Sign in with your Jira account</p>
-        </div>
+      <div className="h-full overflow-y-auto pt-safe-top pb-safe-bottom">
+        <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 gap-6">
+          {/* Branding */}
+          <div className="flex flex-col items-center text-center shrink-0">
+            <img src="/favicon.png" alt="Promotor"
+              className="w-32 h-32 mb-6 rounded-3xl shadow-xl object-contain" />
+            <h1 className="font-display font-extrabold text-5xl tracking-tight text-white">
+              Promotor OPS
+            </h1>
+            <p className="text-slate-400 text-base mt-3">Sign in with your Jira account</p>
+          </div>
 
-        {/* Form — 62% of screen height */}
-        <div className="flex flex-col items-center justify-center px-6"
-          style={{ flex: '3' }}>
-          <form onSubmit={handleJiraLogin} className="space-y-5 w-full max-w-xs">
+          {/* Form */}
+          <form onSubmit={handleJiraLogin} className="space-y-5 w-full max-w-xs shrink-0">
             <div>
               <label className="block text-sm text-slate-400 mb-2 uppercase tracking-wider font-medium">
                 Jira Username
@@ -187,6 +191,7 @@ export default function LoginPage({ onLoginSuccess }: Props) {
                 autoComplete="username"
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setJiraError('') }}
+                onFocus={scrollInputIntoView}
                 disabled={jiraLoading}
                 placeholder="your.name"
                 className="w-full bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 disabled:opacity-50 text-lg"
@@ -201,6 +206,7 @@ export default function LoginPage({ onLoginSuccess }: Props) {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setJiraError('') }}
+                onFocus={scrollInputIntoView}
                 disabled={jiraLoading}
                 placeholder="••••••••"
                 className="w-full bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 disabled:opacity-50 text-lg"

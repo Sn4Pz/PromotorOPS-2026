@@ -23,3 +23,6 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Local dev SSL certificate
+.cert

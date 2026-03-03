@@ -152,20 +152,40 @@ function ImageCard({ att, token, onPreview }: { att: JiraAttachment; token: stri
 
 // ── Document viewer (fullscreen, shown instead of direct download) ─────────
 
+function usePdfWrapperUrl(pdfBlobUrl: string | null) {
+  const [wrapperUrl, setWrapperUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!pdfBlobUrl) { setWrapperUrl(null); return }
+    const html = `<!DOCTYPE html><html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=0.1,maximum-scale=10,user-scalable=yes">
+<style>*{margin:0;padding:0}html,body{width:100%;height:100%;overflow:auto;background:#1e40af}
+embed{width:100%;height:100%}</style>
+</head><body>
+<embed src="${pdfBlobUrl}#view=FitH" type="application/pdf">
+</body></html>`
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    setWrapperUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [pdfBlobUrl])
+  return wrapperUrl
+}
+
 function DocViewer({ att, token, onClose }: { att: JiraAttachment; token: string; onClose: () => void }) {
   const { blobUrl, loading, error } = useAuthBlob(att.content, token)
   const [dl, setDl] = useState(false)
   const pdf = isPdf(att.mimeType)
+  const pdfWrapperUrl = usePdfWrapperUrl(pdf ? blobUrl : null)
 
   async function handleDl() { setDl(true); await downloadBlob(att.content, att.filename, token); setDl(false) }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 shrink-0 bg-black/80 backdrop-blur">
+      <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 shrink-0 bg-slate-900 border-b border-slate-700">
         <button
           onClick={onClose}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 active:bg-white/20 shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700 active:bg-slate-600 shrink-0"
         >
           <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -175,7 +195,7 @@ function DocViewer({ att, token, onClose }: { att: JiraAttachment; token: string
         <button
           onClick={handleDl}
           disabled={dl || loading}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 active:bg-white/20 disabled:opacity-40 shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-700 active:bg-slate-600 disabled:opacity-40 shrink-0"
         >
           {dl
             ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -200,9 +220,9 @@ function DocViewer({ att, token, onClose }: { att: JiraAttachment; token: string
             </button>
           </div>
         )}
-        {!loading && blobUrl && pdf && (
+        {!loading && blobUrl && pdf && pdfWrapperUrl && (
           <iframe
-            src={blobUrl}
+            src={pdfWrapperUrl}
             className="flex-1 w-full border-0"
             title={att.filename}
           />
@@ -237,8 +257,8 @@ function DocViewer({ att, token, onClose }: { att: JiraAttachment; token: string
 
       {/* Footer */}
       {!loading && blobUrl && (
-        <div className="px-4 pb-safe-bottom pb-4 pt-2 text-center shrink-0 bg-black/60">
-          <p className="text-slate-500 text-xs">{att.author} · {att.created} · {formatBytes(att.size)}</p>
+        <div className="px-4 pb-safe-bottom pb-4 pt-2 text-center shrink-0 bg-slate-900 border-t border-slate-700">
+          <p className="text-slate-400 text-xs">{att.author} · {att.created} · {formatBytes(att.size)}</p>
         </div>
       )}
     </div>

@@ -12,11 +12,21 @@ export interface StoredUser {
 }
 
 export async function hashPin(pin: string): Promise<string> {
-  const data = new TextEncoder().encode(pin)
-  const buf  = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
+  if (crypto.subtle) {
+    const data = new TextEncoder().encode(pin)
+    const buf  = await crypto.subtle.digest('SHA-256', data)
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+
+  // Fallback for insecure contexts (HTTP on LAN IP during dev).
+  // Simple djb2-based hash — acceptable for a 4-digit PIN stored locally.
+  let h = 5381
+  for (let i = 0; i < pin.length; i++) {
+    h = ((h << 5) + h + pin.charCodeAt(i)) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
 }
 
 export function saveUser(user: StoredUser): void {
