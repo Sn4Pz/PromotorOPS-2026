@@ -11,7 +11,7 @@ interface Props {
 type ActionItem = {
   mode: ScanMode
   label: string
-  sub: string
+  sub: React.ReactNode
   icon: React.ReactNode
   color: string
   border: string
@@ -22,7 +22,7 @@ const actionItems: ActionItem[] = [
   {
     mode: 'checkin',
     label: 'Check In',
-    sub: 'Scan equipment to mark as received',
+    sub: <>Scan equipment to mark as<br /><span className="font-bold uppercase">work in progress</span></>,
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -35,7 +35,7 @@ const actionItems: ActionItem[] = [
   {
     mode: 'checkout',
     label: 'Check Out',
-    sub: 'Scan equipment to mark as returned',
+    sub: <>Scan equipment to mark as<br /><span className="font-bold uppercase">returned</span></>,
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
