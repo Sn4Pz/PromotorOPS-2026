@@ -7,12 +7,14 @@ Vite already handles everything internally: serving the app, proxying `/jira/*` 
 ## Architecture
 
 ```
-Browser ──HTTPS──▶ Apache httpd (ops.promotor.com:443)
+Browser ──HTTPS──▶ Apache httpd (192.168.123.2 / ops.promotor.com:443)
                       │
-                      └── /*  ──HTTP──▶  Vite dev server (127.0.0.1:5173)
+                      └── /*  ──HTTP──▶  Vite dev server (192.168.123.223:5173)
                                             ├── /              → app (React)
                                             ├── /jira/*        → proxy to jira.promotor.com
                                             └── /api/transition→ server-side middleware
+
+Certificate installer available at http://192.168.123.223:5174 (plain HTTP, for mobile setup)
 ```
 
 ---
@@ -37,20 +39,17 @@ JIRA_SERVICE_PASS=your_password
 
 ### Vite server config
 
-In `vite.config.ts`, update the server host to listen on localhost (Apache will forward to it):
+The Vite dev server is already configured to listen on `192.168.123.223:5173`.
+Once Apache is handling HTTPS, remove the `https` block from `vite.config.ts` so Vite serves plain HTTP:
 
 ```typescript
 server: {
-    host: '127.0.0.1',
+    host: '192.168.123.223',
     port: 5173,
-    // Remove the https block — Apache handles SSL
+    // https block removed — Apache on 192.168.123.2 handles SSL termination
     proxy: { ... }
 }
 ```
-
-> **Note**: For local LAN testing without Apache, you can keep the current config
-> (`host: '192.168.123.223'` with the self-signed cert). The change above is only
-> for the production server where Apache sits in front.
 
 ---
 
@@ -67,14 +66,15 @@ Verify it's running:
 ```bash
 pm2 logs PromotorOPS --lines 10
 # Should show: VITE v5.x.x ready in xxx ms
-#              ➜ Network: http://127.0.0.1:5173/
+#              ➜ Network: http://192.168.123.223:5173/
+#              Certificate installer: http://192.168.123.223:5174
 ```
 
 ---
 
 ## Step 3: Configure Apache httpd
 
-Enable the required modules:
+On the reverse proxy machine (`192.168.123.2`), enable the required modules:
 
 ```bash
 a2enmod ssl proxy proxy_http proxy_wstunnel rewrite headers
@@ -106,7 +106,7 @@ Create the virtual host at `/etc/httpd/conf.d/ops.promotor.com.conf`
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
-    # ── Reverse proxy: everything → Vite dev server ──
+    # ── Reverse proxy: everything → Vite on 192.168.123.223:5173 ──
     ProxyPreserveHost On
     ProxyRequests Off
 
@@ -114,11 +114,11 @@ Create the virtual host at `/etc/httpd/conf.d/ops.promotor.com.conf`
     RewriteEngine On
     RewriteCond %{HTTP:Upgrade} websocket [NC]
     RewriteCond %{HTTP:Connection} upgrade [NC]
-    RewriteRule ^/?(.*) ws://127.0.0.1:5173/$1 [P,L]
+    RewriteRule ^/?(.*) ws://192.168.123.223:5173/$1 [P,L]
 
     # All HTTP traffic
-    ProxyPass        / http://127.0.0.1:5173/
-    ProxyPassReverse / http://127.0.0.1:5173/
+    ProxyPass        / http://192.168.123.223:5173/
+    ProxyPassReverse / http://192.168.123.223:5173/
 
     # ── Logging ──
     ErrorLog  /var/log/httpd/ops.promotor.com-error.log
@@ -170,12 +170,14 @@ will pick up changes within minutes. Users don't need to clear cache or reinstal
 
 ## Firewall / network checklist
 
-| Port | Direction | Purpose |
-|------|-----------|---------|
-| 443 | Inbound | HTTPS from user devices → Apache |
-| 80 | Inbound | HTTP → redirect to HTTPS |
-| 5173 | Loopback only | Apache → Vite dev server |
-| 443 | Outbound (from server) | Vite proxy → jira.promotor.com |
+| Machine | Port | Direction | Purpose |
+|---------|------|-----------|---------|
+| 192.168.123.2 (Apache) | 443 | Inbound | HTTPS from user devices |
+| 192.168.123.2 (Apache) | 80 | Inbound | HTTP → redirect to HTTPS |
+| 192.168.123.2 → .223 | 5173 | LAN | Apache → Vite dev server |
+| 192.168.123.223 (Vite) | 5173 | Inbound from .2 | App + Jira proxy + transition API |
+| 192.168.123.223 (Vite) | 5174 | LAN (optional) | Certificate installer for dev testing |
+| 192.168.123.223 | 443 | Outbound | Vite proxy → jira.promotor.com |
 
 ---
 
@@ -183,9 +185,9 @@ will pick up changes within minutes. Users don't need to clear cache or reinstal
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| 502 Bad Gateway | Vite not running | `pm2 status` then `pm2 restart PromotorOPS` |
-| 502 on `/jira/*` | Server can't reach jira.promotor.com | Check outbound 443 / DNS resolution |
-| 403 on Jira transitions | XSRF filter | Vite proxy handles this — check `pm2 logs` |
-| Camera not working | Not HTTPS or cert untrusted | Verify SSL cert: `curl -I https://ops.promotor.com` |
+| 502 Bad Gateway | Vite not running or .223 unreachable | `pm2 status` on .223; check firewall allows .2 → .223:5173 |
+| 502 on `/jira/*` | .223 can't reach jira.promotor.com | Check outbound 443 / DNS from .223 |
+| 403 on Jira transitions | XSRF filter | Vite proxy handles this — check `pm2 logs` on .223 |
+| Camera not working | Not HTTPS or cert untrusted | Verify SSL cert on .2: `curl -I https://ops.promotor.com` |
 | PWA won't install | Missing manifest or not HTTPS | Check DevTools → Application → Manifest |
-| HMR not connecting | WebSocket not proxied | Ensure `proxy_wstunnel` module is enabled |
+| HMR not connecting | WebSocket not proxied | Ensure `proxy_wstunnel` module is enabled on .2 |
