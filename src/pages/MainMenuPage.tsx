@@ -112,7 +112,7 @@ export default function MainMenuPage({ displayName, username, avatarUrl, jiraTok
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-900">
+    <div className="flex flex-col h-full bg-slate-900 overflow-hidden">
 
       {/* ── Top bar ── */}
       <div className="shrink-0 px-5 pt-safe-top pb-4 flex items-center justify-center border-b border-slate-800">
