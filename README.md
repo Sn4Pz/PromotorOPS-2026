@@ -1,14 +1,7 @@
-# ProMotor OPS — PWA (2026)
+# Promotor OPS — PWA
 
-A Progressive Web App replacing the legacy ProMotor Android app.  
-Operators scan equipment QR codes to trigger Jira check-in / check-out transitions.
-
-## Why PWA?
-
-- Runs in Chrome on any Android / iOS device — no APK, no Play Store
-- Installable to home screen with full-screen experience
-- Uses the device camera via browser APIs
-- Built and deployed without Android Studio
+A Progressive Web App for equipment asset management.
+Operators scan QR codes to trigger Jira check-in / check-out transitions via the Ephor Asset Manager plugin.
 
 ## Tech Stack
 
@@ -16,40 +9,43 @@ Operators scan equipment QR codes to trigger Jira check-in / check-out transitio
 |---|---|
 | Framework | React 18 + TypeScript + Vite 5 |
 | Styling | Tailwind CSS 3 |
-| QR Scanning | html5-qrcode |
-| API | Axios + Jira REST API v2 |
-| PWA | vite-plugin-pwa (Workbox) |
+| QR Scanning | jsQR (iOS/Safari) + BarcodeDetector (Chrome/Android) |
+| HTTP | Axios → Jira REST API v2 + Ephor REST API |
+| PWA | vite-plugin-pwa (Workbox, auto-update) |
 
-## Screens
+## Features
 
-1. **PIN Login** — 4-digit PIN gates access; all Jira calls use the service account
-2. **QR Scanner** — Full-screen camera feed; parses Ephor Asset Manager URLs
-3. **Asset Details** — Shows issue ID, summary, status; Check-in / Check-out buttons
-
-## API Endpoints Used
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /rest/com-spartez-ephor/1.0/item/{itemId}` | Fetch asset info |
-| `POST /rest/api/2/issue/{issueId}/transitions` `{transition:{id:"21"}}` | Check-in |
-| `POST /rest/api/2/issue/{issueId}/transitions` `{transition:{id:"201"}}` | Check-out |
+- **Login** — Jira credentials + 4-digit PIN for quick re-entry
+- **Main Menu** — Check In (work in progress), Check Out (returned), Scan Asset
+- **QR Scanner** — Camera-based scanning with Ephor URL parsing
+- **Asset / Issue Viewer** — Ephor fields, Jira issue details, attachments, PDF preview, comments
+- **Transitions** — Server-side Jira issue transitions via service account
 
 ## Development
 
 ```bash
 npm install
 npm run dev
-# Open http://localhost:5173
 ```
+
+The dev server runs on `https://192.168.123.223:5173` with a self-signed certificate.
+A certificate installer page is available at `http://192.168.123.223:5174` for mobile testing.
+
+### Environment Variables
+
+Create a `.env` file in the project root (already gitignored):
+
+```env
+JIRA_SERVICE_USER=your.service.account
+JIRA_SERVICE_PASS=your_password
+```
+
+These are used by the Vite dev server middleware for the `/api/transition` endpoint.
 
 ## Production Build
 
 ```bash
 npm run build
-# Serve the dist/ folder with any static host (Nginx, Netlify, etc.)
 ```
 
-## Configuration
-
-Copy `.env.example` → `.env.local` and set `VITE_JIRA_BASE_URL` if the Jira origin differs.
-In dev mode the Vite proxy automatically forwards `/jira/*` calls to `https://jira.promotor.com`.
+Output goes to `dist/`. See `DEPLOYMENT.md` for reverse proxy setup.

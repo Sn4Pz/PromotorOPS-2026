@@ -12,8 +12,3 @@ export const SCAN_MODE_COLORS: Record<ScanMode, string> = {
   view:     'text-violet-400',
 }
 
-// Fallback IDs used only when name-matching finds no transition
-export const SCAN_MODE_TRANSITION_FALLBACK: Record<Exclude<ScanMode, 'view'>, string> = {
-  checkin:  '21',
-  checkout: '201',
-}

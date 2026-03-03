@@ -6,9 +6,10 @@ import http from 'http'
 import fs from 'fs'
 import path from 'path'
 
-// Transition IDs: 21 = check-in ("Incepere constatare"), 201 = check-out
 const TRANSITION_IDS: Record<string, string> = { checkin: '21', checkout: '201' }
-const SERVICE_CREDS = Buffer.from('andrei.buldus:Coracoid2015').toString('base64')
+const SERVICE_USER = process.env.JIRA_SERVICE_USER ?? 'andrei.buldus'
+const SERVICE_PASS = process.env.JIRA_SERVICE_PASS ?? ''
+const SERVICE_CREDS = Buffer.from(`${SERVICE_USER}:${SERVICE_PASS}`).toString('base64')
 
 /**
  * Vite plugin that exposes a server-side endpoint for Jira transitions.

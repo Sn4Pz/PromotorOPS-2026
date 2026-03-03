@@ -35,9 +35,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
-    /* Prevent Windows/Android forced-color (high-contrast) mode from
-     * overriding the app's carefully chosen color palette. */
     forced-color-adjust: none;
+  }
+
+  button, a, [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 

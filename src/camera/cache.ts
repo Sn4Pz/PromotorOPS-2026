@@ -31,19 +31,3 @@ export function releaseCachedStream(): void {
   _stream = null
 }
 
-/**
- * Request camera access in the background and cache the stream.
- * Safe to call multiple times — no-ops if a live stream already exists.
- */
-export async function prewarmCamera(): Promise<void> {
-  if (getCachedStream()) return
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } },
-      audio: false,
-    })
-    setCachedStream(stream)
-  } catch {
-    // Permission denied or hardware unavailable — scanner will handle the error
-  }
-}
