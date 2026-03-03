@@ -13,8 +13,6 @@ Browser ──HTTPS──▶ Apache httpd (192.168.123.2 / ops.promotor.com:443)
                                             ├── /              → app (React)
                                             ├── /jira/*        → proxy to jira.promotor.com
                                             └── /api/transition→ server-side middleware
-
-Certificate installer available at http://192.168.123.223:5174 (plain HTTP, for mobile setup)
 ```
 
 ---
@@ -40,7 +38,8 @@ JIRA_SERVICE_PASS=your_password
 ### Vite server config
 
 The Vite dev server is already configured to listen on `192.168.123.223:5173`.
-Once Apache is handling HTTPS, remove the `https` block from `vite.config.ts` so Vite serves plain HTTP:
+Once Apache is handling HTTPS, remove the `https` block from `vite.config.ts` so Vite serves plain HTTP.
+The `certServerPlugin` can also be removed (or left in — it's harmless):
 
 ```typescript
 server: {
@@ -67,7 +66,6 @@ Verify it's running:
 pm2 logs PromotorOPS --lines 10
 # Should show: VITE v5.x.x ready in xxx ms
 #              ➜ Network: http://192.168.123.223:5173/
-#              Certificate installer: http://192.168.123.223:5174
 ```
 
 ---
