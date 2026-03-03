@@ -116,7 +116,7 @@ Create the virtual host at `/etc/httpd/conf.d/ops.promotor.com.conf`
     RewriteCond %{HTTP:Connection} upgrade [NC]
     RewriteRule ^/?(.*) ws://192.168.123.223:5173/$1 [P,L]
 
-    # All HTTP traffic
+    # All HTTP traffic → Vite
     ProxyPass        / http://192.168.123.223:5173/
     ProxyPassReverse / http://192.168.123.223:5173/
 
@@ -137,7 +137,7 @@ systemctl reload httpd
 
 ## Step 4: Verify
 
-1. Open `https://ops.promotor.com` — the app should load
+1. Open `https://ops.promotor.com` — the app should load (valid Sectigo cert, no warnings)
 2. Log in with Jira credentials — validates through Vite's `/jira` proxy
 3. Scan a QR code — fetches asset and issue data
 4. Perform a check-in/out — hits `/api/transition` handled by Vite middleware
@@ -176,7 +176,7 @@ will pick up changes within minutes. Users don't need to clear cache or reinstal
 | 192.168.123.2 (Apache) | 80 | Inbound | HTTP → redirect to HTTPS |
 | 192.168.123.2 → .223 | 5173 | LAN | Apache → Vite dev server |
 | 192.168.123.223 (Vite) | 5173 | Inbound from .2 | App + Jira proxy + transition API |
-| 192.168.123.223 (Vite) | 5174 | LAN (optional) | Certificate installer for dev testing |
+| 192.168.123.223 (Vite) | 5174 | LAN (optional) | Certificate installer (dev only, not needed in prod) |
 | 192.168.123.223 | 443 | Outbound | Vite proxy → jira.promotor.com |
 
 ---
