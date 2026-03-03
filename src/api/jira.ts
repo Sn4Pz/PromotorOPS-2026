@@ -44,6 +44,8 @@ export interface JiraUser {
   name: string
   displayName: string
   emailAddress?: string
+  avatarUrls?: Record<string, string>
+  avatarDataUrl?: string
 }
 
 /** One custom field from the Ephor asset — parsed for display */
@@ -178,8 +180,30 @@ function parseFields(rawFields: any[]): { fields: AssetField[]; imageRef?: strin
 // ── Auth ───────────────────────────────────────────────────────────────────
 
 export async function validateJiraCredentials(username: string, password: string): Promise<JiraUser> {
-  const client = makeClient(btoa(`${username}:${password}`))
+  const token = btoa(`${username}:${password}`)
+  const client = makeClient(token)
   const { data } = await client.get<JiraUser>('/rest/api/2/myself')
+
+  // Fetch the avatar as a data URL so it works offline and avoids proxy redirect issues
+  const rawAvatarUrl = data.avatarUrls?.['48x48'] ?? data.avatarUrls?.['32x32']
+  if (rawAvatarUrl) {
+    const proxiedUrl = rawAvatarUrl.replace(JIRA_BASE, BASE_URL)
+    try {
+      const res = await fetch(proxiedUrl, {
+        headers: { Authorization: `Basic ${token}` },
+        redirect: 'follow',
+      })
+      if (res.ok) {
+        const blob = await res.blob()
+        data.avatarDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+      }
+    } catch { /* avatar is non-critical */ }
+  }
+
   return data
 }
 

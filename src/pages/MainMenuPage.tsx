@@ -2,6 +2,8 @@ import { ScanMode } from '../types'
 
 interface Props {
   displayName: string
+  username: string
+  avatarUrl?: string
   onSelect: (mode: ScanMode) => void
   onLogout: () => void
 }
@@ -60,35 +62,41 @@ const actionItems: ActionItem[] = [
   },
 ]
 
-export default function MainMenuPage({ displayName, onSelect, onLogout }: Props) {
+function Avatar({ displayName, avatarUrl }: { displayName: string; avatarUrl?: string }) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={displayName}
+        className="w-8 h-8 rounded-full object-cover shrink-0"
+      />
+    )
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
+      <span className="text-white text-sm font-bold leading-none">
+        {displayName.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  )
+}
+
+export default function MainMenuPage({ displayName, username, avatarUrl, onSelect, onLogout }: Props) {
+  const profileUrl = `https://jira.promotor.com/secure/ViewProfile.jspa?name=${encodeURIComponent(username)}`
+
   return (
     <div className="flex flex-col h-full bg-slate-900">
 
       {/* ── Top bar ── */}
-      <div className="shrink-0 px-5 pt-safe-top pb-4 flex items-center justify-between border-b border-slate-800">
-        {/* whitespace-nowrap + text-xl (down from 2xl) prevent the title from
-            wrapping on Android where Roboto is slightly wider than San Francisco */}
-        <div className="flex items-center gap-2.5 min-w-0 shrink-0">
-          <img src="/favicon.png" alt="Promotor" className="w-9 h-9 rounded-xl object-contain shrink-0" />
-          <h1 className="font-display font-extrabold text-xl tracking-tight text-white whitespace-nowrap">
-            Promotor OPS
-          </h1>
-        </div>
-        <div className="flex items-center gap-2 min-w-0 ml-3">
-          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-            <span className="text-white text-sm font-bold leading-none">
-              {displayName.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          {/* max-w tightened so long names don't push the title off the row */}
-          <span className="text-slate-400 text-sm font-medium max-w-[90px] truncate">
-            {displayName}
-          </span>
-        </div>
+      <div className="shrink-0 px-5 pt-safe-top pb-4 flex items-center justify-center border-b border-slate-800">
+        <img src="/favicon.png" alt="Promotor" className="w-9 h-9 rounded-xl object-contain shrink-0" />
+        <h1 className="font-display font-extrabold text-xl tracking-tight text-white whitespace-nowrap ml-2.5">
+          Promotor OPS
+        </h1>
       </div>
 
-      {/* ── Action cards — flex-1 fills space, max-h caps each card so they
-            don't overstretch on tall viewports (the A51 issue) ── */}
+      {/* ── Action cards ── */}
       <div className="flex-1 flex flex-col items-stretch justify-center px-4 gap-3 py-4">
         {actionItems.map((item) => (
           <button
@@ -115,8 +123,17 @@ export default function MainMenuPage({ displayName, onSelect, onLogout }: Props)
         ))}
       </div>
 
-      {/* ── Sign out ── */}
-      <div className="shrink-0 px-5 pb-safe-bottom flex items-center justify-center">
+      {/* ── User + sign out ── */}
+      <div className="shrink-0 px-5 pb-safe-bottom pb-4 pt-3 flex flex-col items-center gap-3">
+        <a
+          href={profileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2.5 active:opacity-70"
+        >
+          <Avatar displayName={displayName} avatarUrl={avatarUrl} />
+          <span className="text-white text-sm font-medium">{displayName}</span>
+        </a>
         <button
           onClick={onLogout}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-700 text-slate-400 active:text-white active:border-slate-500 transition-colors"

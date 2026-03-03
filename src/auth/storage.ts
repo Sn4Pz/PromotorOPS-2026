@@ -9,6 +9,7 @@ export interface StoredUser {
   displayName: string     // Full name from Jira /myself
   pinHash: string         // SHA-256 hex of PIN
   jiraToken: string       // base64(username:password) — Basic auth token for user's own calls
+  avatarUrl?: string      // Proxied avatar URL from Jira /myself
 }
 
 export async function hashPin(pin: string): Promise<string> {

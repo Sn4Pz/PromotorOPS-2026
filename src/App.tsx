@@ -39,6 +39,8 @@ export default function App() {
       {screen === 'menu' && user && (
         <MainMenuPage
           displayName={user.displayName || user.username}
+          username={user.username}
+          avatarUrl={user.avatarUrl}
           onSelect={(mode) => { setScanMode(mode); setScreen('scanner') }}
           onLogout={() => {
             releaseCachedStream()

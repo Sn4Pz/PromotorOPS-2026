@@ -106,8 +106,9 @@ export default function LoginPage({ onLoginSuccess }: Props) {
       const partial: StoredUser = {
         username:    username.trim(),
         displayName: profile.displayName || username.trim(),
-        pinHash:     '',       // will be set after PIN setup
+        pinHash:     '',
         jiraToken,
+        avatarUrl:   profile.avatarDataUrl,
       }
       setStoredUser(partial)
       setPin('')
@@ -167,7 +168,7 @@ export default function LoginPage({ onLoginSuccess }: Props) {
   if (step === 'jira') {
     return (
       <div className="h-full overflow-y-auto pt-safe-top pb-safe-bottom">
-        <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 gap-6">
+        <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 gap-10">
           {/* Branding */}
           <div className="flex flex-col items-center text-center shrink-0">
             <img src="/favicon.png" alt="Promotor"
