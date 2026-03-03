@@ -41,6 +41,7 @@ export default function App() {
           displayName={user.displayName || user.username}
           username={user.username}
           avatarUrl={user.avatarUrl}
+          jiraToken={user.jiraToken}
           onSelect={(mode) => { setScanMode(mode); setScreen('scanner') }}
           onLogout={() => {
             releaseCachedStream()

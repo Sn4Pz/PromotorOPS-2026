@@ -4,6 +4,7 @@ interface Props {
   displayName: string
   username: string
   avatarUrl?: string
+  jiraToken: string
   onSelect: (mode: ScanMode) => void
   onLogout: () => void
 }
@@ -82,8 +83,33 @@ function Avatar({ displayName, avatarUrl }: { displayName: string; avatarUrl?: s
   )
 }
 
-export default function MainMenuPage({ displayName, username, avatarUrl, onSelect, onLogout }: Props) {
-  const profileUrl = `https://jira.promotor.com/secure/ViewProfile.jspa?name=${encodeURIComponent(username)}`
+export default function MainMenuPage({ displayName, username, avatarUrl, jiraToken, onSelect, onLogout }: Props) {
+  const profileDest = `/secure/ViewProfile.jspa?name=${encodeURIComponent(username)}`
+
+  function openProfile() {
+    const decoded = atob(jiraToken)
+    const sep = decoded.indexOf(':')
+    const user = decoded.substring(0, sep)
+    const pass = decoded.substring(sep + 1)
+
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = `https://jira.promotor.com/login.jsp`
+    form.target = '_blank'
+    form.style.display = 'none'
+
+    for (const [k, v] of [['os_username', user], ['os_password', pass], ['os_destination', profileDest]]) {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = k
+      input.value = v
+      form.appendChild(input)
+    }
+
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
+  }
 
   return (
     <div className="flex flex-col h-full bg-slate-900">
@@ -125,15 +151,13 @@ export default function MainMenuPage({ displayName, username, avatarUrl, onSelec
 
       {/* ── User + sign out ── */}
       <div className="shrink-0 px-5 pb-safe-bottom pb-4 pt-3 flex flex-col items-center gap-3">
-        <a
-          href={profileUrl}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          onClick={openProfile}
           className="flex items-center gap-2.5 active:opacity-70"
         >
           <Avatar displayName={displayName} avatarUrl={avatarUrl} />
           <span className="text-white text-sm font-medium">{displayName}</span>
-        </a>
+        </button>
         <button
           onClick={onLogout}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-700 text-slate-400 active:text-white active:border-slate-500 transition-colors"
