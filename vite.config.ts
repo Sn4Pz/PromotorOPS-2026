@@ -246,10 +246,7 @@ export default defineConfig({
   server: {
     host: '192.168.123.223',
     port: 5173,
-    https: {
-      key: fs.readFileSync('.cert/key.pem'),
-      cert: fs.readFileSync('.cert/cert.pem'),
-    },
+    allowedHosts: ['ops.promotor.com'],
     proxy: {
       '/jira': {
         target: 'https://jira.promotor.com',
