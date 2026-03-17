@@ -6,10 +6,27 @@ import http from 'http'
 import fs from 'fs'
 import path from 'path'
 
+// Load .env into process.env for Node-side variables (e.g. JIRA_SERVICE_PASS)
+const dotenvPath = path.resolve(__dirname, '.env')
+if (fs.existsSync(dotenvPath)) {
+  fs.readFileSync(dotenvPath, 'utf-8').split('\n').forEach(line => {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) return
+    const eq = trimmed.indexOf('=')
+    if (eq === -1) return
+    const key = trimmed.slice(0, eq).trim()
+    const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '')
+    if (key && !(key in process.env)) process.env[key] = val
+  })
+}
+
 const TRANSITION_IDS: Record<string, string> = { checkin: '21', checkout: '201' }
 const SERVICE_USER = process.env.JIRA_SERVICE_USER ?? 'andrei.buldus'
 const SERVICE_PASS = process.env.JIRA_SERVICE_PASS ?? ''
 const SERVICE_CREDS = Buffer.from(`${SERVICE_USER}:${SERVICE_PASS}`).toString('base64')
+
+console.log(`[transition] service account : ${SERVICE_USER}`)
+console.log(`[transition] password set    : ${SERVICE_PASS ? 'YES' : 'NO — JIRA_SERVICE_PASS env var is missing!'}`)
 
 /**
  * Vite plugin that exposes a server-side endpoint for Jira transitions.
@@ -64,16 +81,21 @@ const jiraTransitionPlugin = {
           rejectUnauthorized: true,
         }
 
+        console.log(`[transition] → POST https://jira.promotor.com/rest/api/2/issue/${issueId}/transitions  (mode=${mode}, transitionId=${transitionId})`)
+
         const jiraReq = https.request(options, (jiraRes) => {
           let data = ''
           jiraRes.on('data', (chunk) => { data += chunk })
           jiraRes.on('end', () => {
+            console.log(`[transition] ← Jira responded ${jiraRes.statusCode}`)
+            if (jiraRes.statusCode !== 204) console.log(`[transition]   body: ${data}`)
             res.writeHead(jiraRes.statusCode ?? 500, { 'Content-Type': 'application/json' })
             res.end(data || '{}')
           })
         })
 
         jiraReq.on('error', (err: Error) => {
+          console.error(`[transition] ✗ request error: ${err.message}`)
           res.writeHead(502)
           res.end(JSON.stringify({ error: err.message }))
         })
