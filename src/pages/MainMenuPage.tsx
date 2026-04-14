@@ -17,7 +17,6 @@ type ActionItem = {
   color: string
   border: string
   iconBg: string
-  glow: string
 }
 
 const actionItems: ActionItem[] = [
@@ -30,10 +29,9 @@ const actionItems: ActionItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
       </svg>
     ),
-    color: 'bg-gradient-to-br from-emerald-900/70 via-emerald-800/50 to-emerald-800/35',
-    border: 'border-emerald-600/20',
-    iconBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
-    glow: '0 2px 12px -4px rgba(16, 185, 129, 0.15)',
+    color: 'bg-emerald-800/60',
+    border: 'border-emerald-600/50',
+    iconBg: 'bg-emerald-600',
   },
   {
     mode: 'checkout',
@@ -45,10 +43,9 @@ const actionItems: ActionItem[] = [
           d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
       </svg>
     ),
-    color: 'bg-gradient-to-br from-blue-900/70 via-blue-800/50 to-blue-800/35',
-    border: 'border-blue-600/20',
-    iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
-    glow: '0 2px 12px -4px rgba(59, 130, 246, 0.15)',
+    color: 'bg-blue-800/60',
+    border: 'border-blue-600/50',
+    iconBg: 'bg-blue-600',
   },
   {
     mode: 'view',
@@ -60,10 +57,9 @@ const actionItems: ActionItem[] = [
           d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
       </svg>
     ),
-    color: 'bg-gradient-to-br from-violet-900/70 via-violet-800/50 to-violet-800/35',
-    border: 'border-violet-600/20',
-    iconBg: 'bg-gradient-to-br from-violet-500 to-violet-600',
-    glow: '0 2px 12px -4px rgba(139, 92, 246, 0.15)',
+    color: 'bg-violet-800/60',
+    border: 'border-violet-600/50',
+    iconBg: 'bg-violet-600',
   },
 ]
 
@@ -135,20 +131,18 @@ export default function MainMenuPage({ displayName, username, avatarUrl, jiraTok
             className={`
               flex-1 w-full max-h-[8.5rem] flex items-center gap-4 px-5 rounded-3xl border
               ${item.color} ${item.border}
-              active:scale-[0.97] transition-all duration-200
-              text-left relative overflow-hidden
+              active:scale-[0.97] transition-transform duration-100
+              text-left shadow-lg
             `}
-            style={{ boxShadow: item.glow }}
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-white/[0.04] pointer-events-none" />
-            <div className={`w-12 h-12 rounded-2xl ${item.iconBg} flex items-center justify-center shrink-0 text-white shadow-lg relative`}>
+            <div className={`w-12 h-12 rounded-2xl ${item.iconBg} flex items-center justify-center shrink-0 text-white shadow`}>
               {item.icon}
             </div>
-            <div className="flex-1 min-w-0 relative">
+            <div className="flex-1 min-w-0">
               <p className="text-white font-bold text-base leading-tight">{item.label}</p>
               <p className="text-slate-300/70 text-sm mt-0.5 leading-snug">{item.sub}</p>
             </div>
-            <svg className="w-5 h-5 text-slate-400 shrink-0 relative" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
